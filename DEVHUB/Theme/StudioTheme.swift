@@ -1,11 +1,13 @@
 import SwiftUI
 enum StudioTheme {
-    static let background = Color(hex:"0B0E14")
-    static let surface = Color(hex:"111720")
-    static let elevated = Color(hex:"171F2B")
-    static let border = Color(hex:"252F3D")
-    static let muted = Color(hex:"8793A4")
-    static let lime = Color(hex:"B6EF70")
+    static let background = Color(hex:"F3F5F7")
+    static let surface = Color(hex:"FFFFFF")
+    static let elevated = Color(hex:"E9EEF3")
+    static let border = Color(hex:"E0E5EB")
+    static let muted = Color(hex:"738092")
+    static let text = Color(hex:"202B38")
+    static let secondaryText = Color(hex:"526173")
+    static let accent = Color(hex:"587B9D")
 }
 extension Color {
     init(hex: String) {
