@@ -22,5 +22,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: se.niklas.devhub
         PRODUCT_NAME: DEVHUB
         INFOPLIST_KEY_CFBundleDisplayName: DEVHUB
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
         CODE_SIGN_STYLE: Automatic
         SWIFT_EMIT_LOC_STRINGS: YES
