@@ -8,8 +8,10 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - Native SwiftUI for iPhone and iPad
 - iOS 17+
 - XcodeGen project specification
-- GitHub Actions builds an unsigned IPA artifact for sideloading/signing with FlareStore
+- GitHub Actions builds an unsigned IPA artifact for signing and sideloading with FlareStore
 - No Mac required locally; CI uses a hosted macOS runner
+- Bundle ID: `se.niklas.devhub`
+- Version: `1.0.0 (1)`
 
 ## Current foundation
 - [x] Native SwiftUI app shell and tab navigation
@@ -19,7 +21,8 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - [x] Project list and detail screen
 - [x] GitHub repository deep links
 - [x] GitHub Actions unsigned IPA build workflow
-- [ ] Verify first CI build and sideload on iPhone/iPad
+- [x] First CI build completed successfully and IPA package structure verified
+- [ ] Install and test on iPhone/iPad through FlareStore
 
 ## Project portfolio
 Regnvakt, VITAL, Familjen, Antikspanaren, BingeLog, NEWSFLOW, NEXUS and ORBIT.
