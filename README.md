@@ -1,49 +1,37 @@
 # DEVHUB
 
-**Developer command center for independent projects.**
+**Native iPhone and iPad command center for an independent app studio.**
 
-DEVHUB is a project-agnostic workspace for tracking software projects, development activity, releases, roadmap progress, analytics and revenue — without depending on App Store Connect.
+DEVHUB is a SwiftUI app for tracking every project regardless of distribution channel. App Store Connect is optional, never the foundation.
 
-## Product direction
-- Dark, premium, responsive interface.
-- iPhone-friendly web app; PWA capabilities planned.
-- GitHub is the first integration and source of truth for development activity.
-- Revenue providers (Stripe and others) connect per project.
-- iOS, tvOS, web, internal tools and experiments are all supported.
+## Platform and build
+- Native SwiftUI for iPhone and iPad
+- iOS 17+
+- XcodeGen project specification
+- GitHub Actions builds an unsigned IPA artifact for sideloading/signing with FlareStore
+- No Mac required locally; CI uses a hosted macOS runner
 
-## Foundation 0.1.0
-- [x] Responsive dashboard shell and navigation
-- [x] Initial project portfolio seeded from existing studio repositories
-- [x] Project progress cards and overview metrics
-- [x] Basic interactive task list
-- [x] Honest placeholder states for integrations not yet connected
+## Current foundation
+- [x] Native SwiftUI app shell and tab navigation
+- [x] Midnight dark theme with lime accents
+- [x] Initial project portfolio
+- [x] Overview metrics and project cards
+- [x] Project list and detail screen
+- [x] GitHub repository deep links
+- [x] GitHub Actions unsigned IPA build workflow
+- [ ] Verify first CI build and sideload on iPhone/iPad
+
+## Project portfolio
+Regnvakt, VITAL, Familjen, Antikspanaren, BingeLog, NEWSFLOW, NEXUS and ORBIT.
 
 ## Roadmap
+1. Persistent project register: create, edit, archive, categories, status and progress.
+2. GitHub integration: repositories, commits, branches, PRs, issues, releases and CI status.
+3. Roadmap and task management: milestones, features, bugs, notes and project history.
+4. Business dashboard: revenue providers (Stripe first), subscriptions, costs and profit by project.
+5. Analytics and notifications.
 
-### Phase 1 — Workspace
-- [ ] Persistent project CRUD and metadata
-- [ ] Project detail pages, milestones and notes
-- [ ] Persistent tasks and roadmap
+## Security
+Never store GitHub personal access tokens, Stripe secrets or other provider credentials in the iOS app. Integrations must use a secure server-side broker.
 
-### Phase 2 — GitHub
-- [ ] Secure GitHub App/OAuth integration (server-side credentials only)
-- [ ] Repository mapping per project
-- [ ] Commits, branches, pull requests, issues and releases
-- [ ] CI/workflow status and deployment activity
-
-### Phase 3 — Business intelligence
-- [ ] Stripe revenue integration
-- [ ] MRR, ARR, refunds, fees and customer counts
-- [ ] Hosting/service costs by project
-- [ ] Profitability and revenue history
-
-### Phase 4 — Analytics and automation
-- [ ] Privacy-conscious product analytics integrations
-- [ ] Notifications for failed builds and releases
-- [ ] Weekly studio digest and exportable reports
-
-## Architecture principles
-Start with a responsive web application. Keep provider credentials on a server-side integration layer. Do not display fabricated live data or imply an integration is connected when it is not. Add persistence and integrations incrementally.
-
-## Repository
-https://github.com/72cbbw422f-alt/devh
+Repository: https://github.com/72cbbw422f-alt/devh
