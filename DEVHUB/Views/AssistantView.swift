@@ -1,4 +1,11 @@
 import SwiftUI
+import Security
+
+private struct AssistantRepository: Identifiable {
+    let name: String
+    let fullName: String
+    var id: String { fullName }
+}
 
 struct AssistantView: View {
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
@@ -9,15 +16,15 @@ struct AssistantView: View {
     @State private var statusMessage: String?
     @State private var workflowURL: URL?
 
-    private let repositories: [(name: String, fullName: String)] = [
-        ("Regnvakt", "72cbbw422f-alt/project-orbit"),
-        ("VITAL", "72cbbw422f-alt/vit"),
-        ("Familjen", "72cbbw422f-alt/fam"),
-        ("Antikspanaren", "72cbbw422f-alt/vill"),
-        ("BingeLog / Watchlist", "72cbbw422f-alt/binge"),
-        ("NEWSFLOW", "72cbbw422f-alt/news"),
-        ("NEXUS", "72cbbw422f-alt/nex"),
-        ("ORBIT", "72cbbw422f-alt/orb")
+    private let repositories: [AssistantRepository] = [
+        AssistantRepository(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
+        AssistantRepository(name: "VITAL", fullName: "72cbbw422f-alt/vit"),
+        AssistantRepository(name: "Familjen", fullName: "72cbbw422f-alt/fam"),
+        AssistantRepository(name: "Antikspanaren", fullName: "72cbbw422f-alt/vill"),
+        AssistantRepository(name: "BingeLog / Watchlist", fullName: "72cbbw422f-alt/binge"),
+        AssistantRepository(name: "NEWSFLOW", fullName: "72cbbw422f-alt/news"),
+        AssistantRepository(name: "NEXUS", fullName: "72cbbw422f-alt/nex"),
+        AssistantRepository(name: "ORBIT", fullName: "72cbbw422f-alt/orb")
     ]
 
     var body: some View {
@@ -119,7 +126,7 @@ struct AssistantView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Nytt uppdrag").font(.headline).foregroundStyle(StudioTheme.text)
             Picker("Projekt", selection: $selectedRepository) {
-                ForEach(repositories, id: \.fullName) { item in
+                ForEach(repositories) { item in
                     Text(item.name).tag(item.fullName)
                 }
             }
