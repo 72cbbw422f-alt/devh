@@ -1,12 +1,17 @@
 import SwiftUI
 
+private struct AssistantSuggestion: Identifiable {
+    let symbol: String
+    let title: String
+    var id: String { title }
+}
+
 struct AssistantView: View {
-    @State private var draft = ""
     private let suggestions = [
-        ("magnifyingglass","Granska ett projekt"),
-        ("hammer","Felsök senaste bygget"),
-        ("list.bullet.clipboard","Planera nästa steg"),
-        ("arrow.triangle.branch","Förbered en GitHub-ändring")
+        AssistantSuggestion(symbol:"magnifyingglass",title:"Granska ett projekt"),
+        AssistantSuggestion(symbol:"hammer",title:"Felsök senaste bygget"),
+        AssistantSuggestion(symbol:"list.bullet.clipboard",title:"Planera nästa steg"),
+        AssistantSuggestion(symbol:"arrow.triangle.branch",title:"Förbered en GitHub-ändring")
     ]
 
     var body: some View {
@@ -31,10 +36,10 @@ struct AssistantView: View {
 
                 VStack(alignment:.leading,spacing:12) {
                     SectionHeading(eyebrow:"SNABBSTART",title:"Vad vill du göra?")
-                    ForEach(suggestions,id:\.1) { item in
+                    ForEach(suggestions) { item in
                         HStack(spacing:12) {
-                            Image(systemName:item.0).foregroundStyle(StudioTheme.accent).frame(width:34,height:34).background(StudioTheme.elevated,in:RoundedRectangle(cornerRadius:10))
-                            Text(item.1).font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                            Image(systemName:item.symbol).foregroundStyle(StudioTheme.accent).frame(width:34,height:34).background(StudioTheme.elevated,in:RoundedRectangle(cornerRadius:10))
+                            Text(item.title).font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
                             Spacer()
                             Image(systemName:"arrow.up.right").font(.caption).foregroundStyle(StudioTheme.muted)
                         }.padding(12).background(StudioTheme.surface,in:RoundedRectangle(cornerRadius:12)).overlay(RoundedRectangle(cornerRadius:12).stroke(StudioTheme.border,lineWidth:1))
