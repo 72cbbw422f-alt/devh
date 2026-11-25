@@ -18,6 +18,31 @@ struct AssistantView: View {
 
     private let repositories: [AssistantRepository] = [
         AssistantRepository(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
+        AssistantRepository(name: "Familjen", fullName: "72cbbw422f-alt/fam"),
+        AssistantRepository(name: "Watchlist", fullName: "72cbbw422f-alt/binge"),
+        AssistantRepository(name: "Antikspanaren", fullName: "72cbbw422f-alt/vill"),
+        AssistantRepository(name: "Hemma", fullName: "72cbbw422f-alt/hem"),
+        AssistantRepository(name: "DEVHUB", fullName: "72cbbw422f-alt/devh")
+    ]t SwiftUI
+import Security
+
+private struct AssistantRepository: Identifiable {
+    let name: String
+    let fullName: String
+    var id: String { fullName }
+}
+
+struct AssistantView: View {
+    @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
+    @State private var task = ""
+    @State private var githubToken = ""
+    @State private var hasSavedToken = false
+    @State private var isSending = false
+    @State private var statusMessage: String?
+    @State private var workflowURL: URL?
+
+    private let repositories: [AssistantRepository] = [
+        AssistantRepository(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
         AssistantRepository(name: "VITAL", fullName: "72cbbw422f-alt/vit"),
         AssistantRepository(name: "Familjen", fullName: "72cbbw422f-alt/fam"),
         AssistantRepository(name: "Antikspanaren", fullName: "72cbbw422f-alt/vill"),
