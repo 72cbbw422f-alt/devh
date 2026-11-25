@@ -28,7 +28,7 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - [ ] Add approved code-change and pull-request workflow
 
 ## Project portfolio
-Regnvakt, VITAL, Familjen, Antikspanaren, BingeLog, NEWSFLOW, NEXUS and ORBIT.
+Familjen, Watchlist, Antikspanaren, Regnvakt, Hemma and DEVHUB.
 
 ## Serverless AI assistant architecture
 No separately hosted backend or database is required for the first version:
@@ -38,7 +38,7 @@ No separately hosted backend or database is required for the first version:
 - The result is written to the GitHub Actions run summary.
 - The initial workflow is strictly read-only. It cannot push commits, change files or create pull requests.
 
-The iOS app will keep the GitHub fine-grained personal access token in the iOS Keychain, never in source code or UserDefaults. The token is only used to dispatch and read workflow runs. For dispatch, GitHub requires the repository Actions permission set to write.
+The iOS app keeps the GitHub fine-grained personal access token in the iOS Keychain, never in source code or UserDefaults. The token is only used to dispatch and read workflow runs. For dispatch, GitHub requires the repository Actions permission set to write.
 
 ### First-time setup
 1. Create an OpenAI API key in the OpenAI developer platform.
