@@ -258,11 +258,11 @@ struct AssistantView: View {
                 Text("\\(byteWorkItems.count) uppdrag")
                     .font(.caption.monospacedDigit()).foregroundStyle(StudioTheme.muted)
             }
-            if byteWorkItems.isEmpty {
+            Picker("Visa", selection: $queueFilter) {\n                Text("Alla").tag("Alla")\n                Text("Aktiva").tag("Aktiva")\n                Text("Klara").tag("Klara")\n                Text("Misslyckade").tag("Misslyckade")\n            }\n            .pickerStyle(.segmented)\n            if filteredQueueItems.isEmpty {
                 Text("När du skickar ett uppdrag till Byte hamnar det här med aktuell status.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             } else {
-                ForEach(byteWorkItems.prefix(12)) { item in
+                ForEach(filteredQueueItems.prefix(12)) { item in
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: queueSymbol(item.statusRawValue))
                             .foregroundStyle(queueColor(item.statusRawValue))
@@ -289,6 +289,15 @@ struct AssistantView: View {
         .padding(15).frame(maxWidth: .infinity, alignment: .leading)
         .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
+    }
+
+    private var filteredQueueItems: [ByteWorkItem] {
+        switch queueFilter {
+        case "Aktiva": byteWorkItems.filter { $0.statusRawValue == "queued" || $0.statusRawValue == "running" }
+        case "Klara": byteWorkItems.filter { $0.statusRawValue == "completed" }
+        case "Misslyckade": byteWorkItems.filter { $0.statusRawValue == "failed" }
+        default: byteWorkItems
+        }
     }
 
     private func queueSymbol(_ status: String) -> String {
