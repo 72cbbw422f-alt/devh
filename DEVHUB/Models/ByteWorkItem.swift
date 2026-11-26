@@ -19,6 +19,7 @@ final class ByteWorkItem {
     var costUSD: Double = 0
     var patchPreview: String?
     var baseCommitSHA: String?
+    var patchStatusRawValue: String = "pending"
 
     var workModeLabel: String {
         switch workModeRawValue {
@@ -50,5 +51,6 @@ final class ByteWorkItem {
         workModeRawValue = workMode
         conversationResponseID = nil
         baseCommitSHA = nil
+        patchStatusRawValue = "pending"
     }
 }
