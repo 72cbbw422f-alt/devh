@@ -13,6 +13,7 @@ final class ByteWorkItem {
     var workflowRunID: Int?
     var analysisText: String?
     var workModeRawValue: String = "approval"
+    var conversationResponseID: String?
 
     var workModeLabel: String {
         switch workModeRawValue {
@@ -42,5 +43,6 @@ final class ByteWorkItem {
         workflowRunID = nil
         analysisText = nil
         workModeRawValue = workMode
+        conversationResponseID = nil
     }
 }
