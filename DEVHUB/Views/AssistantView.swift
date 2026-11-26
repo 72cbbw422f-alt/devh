@@ -410,6 +410,13 @@ struct AssistantView: View {
                                             }
                                             .tint(StudioTheme.accent)
                                         }
+                                        if let rawURL = item.patchPullRequestURL, let url = URL(string: rawURL) {
+                                            Link(destination: url) {
+                                                Label("Öppna pull request", systemImage: "arrow.up.right.square")
+                                                    .font(.caption.weight(.semibold))
+                                            }
+                                            .tint(StudioTheme.accentCyan)
+                                        }
                                         if let rawURL = item.patchWorkflowURL, let url = URL(string: rawURL) {
                                             Link("Följ GitHub-jobbet", destination: url)
                                                 .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
@@ -732,8 +739,12 @@ struct AssistantView: View {
                         item.updatedAt = .now
                     }
                 }
+                let pullRequestURL = result.message.contains("lyckades")
+                    ? await GitHubWorkflowClient.fetchPullRequestURL(repository: item.projectRepository, runID: result.id, title: item.title, token: token)
+                    : nil
                 await MainActor.run {
                     item.patchStatusRawValue = result.message.contains("lyckades") ? "completed" : "failed"
+                    item.patchPullRequestURL = pullRequestURL?.absoluteString ?? item.patchPullRequestURL
                     item.updatedAt = .now
                     item.patchWorkflowURL = result.url?.absoluteString ?? item.patchWorkflowURL
                     statusMessage = result.message
@@ -780,8 +791,12 @@ struct AssistantView: View {
                         item.updatedAt = .now
                     }
                 }
+                let pullRequestURL = result.message.contains("lyckades")
+                    ? await GitHubWorkflowClient.fetchPullRequestURL(repository: item.projectRepository, runID: result.id, title: item.title, token: token)
+                    : nil
                 await MainActor.run {
                     item.patchStatusRawValue = result.message.contains("lyckades") ? "completed" : "failed"
+                    item.patchPullRequestURL = pullRequestURL?.absoluteString ?? item.patchPullRequestURL
                     item.patchWorkflowURL = result.url?.absoluteString ?? item.patchWorkflowURL
                     item.updatedAt = .now
                     statusMessage = result.message
@@ -1051,6 +1066,45 @@ private enum GitHubWorkflowClient {
             }
         }
         throw WorkflowError.timeout
+    }
+
+    private struct PullRequest: Decodable {
+        let html_url: String
+    }
+
+    static func fetchPullRequestURL(repository: String, runID: Int, title: String, token: String) async -> URL? {
+        let slugBase = title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .lowercased()
+        let asciiSlug = String(slugBase.map { character -> Character in
+            character.isASCII && character.isLetter || character.isASCII && character.isNumber ? character : "-"
+        })
+        let slug = String(asciiSlug.split(separator: "-", omittingEmptySubsequences: true).joined(separator: "-").prefix(32))
+        let branch = "byte/approved-\\(runID)-\\(slug.isEmpty ? "change" : slug)"
+        let components = repository.split(separator: "/")
+        guard components.count == 2 else { return nil }
+        var urlComponents = URLComponents(string: "https://api.github.com/repos/\\(repository)/pulls")!
+        urlComponents.queryItems = [
+            URLQueryItem(name: "state", value: "all"),
+            URLQueryItem(name: "head", value: "\\(components[0]):\\(branch)"),
+            URLQueryItem(name: "per_page", value: "1")
+        ]
+        guard let url = urlComponents.url else { return nil }
+        for _ in 0..<5 {
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let pullRequests = try? JSONDecoder().decode([PullRequest].self, from: data),
+                  let first = pullRequests.first,
+                  let pullURL = URL(string: first.html_url) else {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                continue
+            }
+            return pullURL
+        }
+        return nil
     }
 
     static func fetchAnalysis(runID: Int, token: String) async throws -> String {

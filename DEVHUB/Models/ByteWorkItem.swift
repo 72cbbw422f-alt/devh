@@ -22,6 +22,7 @@ final class ByteWorkItem {
     var patchStatusRawValue: String = "pending"
     var patchWorkflowRunID: Int?
     var patchWorkflowURL: String?
+    var patchPullRequestURL: String?
     var patchDispatchedAt: Date?
 
     var workModeLabel: String {
@@ -57,6 +58,7 @@ final class ByteWorkItem {
         patchStatusRawValue = "pending"
         patchWorkflowRunID = nil
         patchWorkflowURL = nil
+        patchPullRequestURL = nil
         patchDispatchedAt = nil
     }
 }
