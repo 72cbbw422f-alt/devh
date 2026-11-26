@@ -25,7 +25,7 @@ struct AssistantView: View {
     private let repositories: [AssistantRepository] = [
         .init(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
         .init(name: "Familjen", fullName: "72cbbw422f-alt/fam"),
-        .init(name: "Watchlist", fullName: "72cbbw422f-alt/binge"),
+        .init(name: "Watchlist", fullName: "72cbbw422f-alt/watch"),
         .init(name: "Antikspanaren", fullName: "72cbbw422f-alt/vill"),
         .init(name: "Hemma", fullName: "72cbbw422f-alt/hem"),
         .init(name: "DEVHUB", fullName: "72cbbw422f-alt/devh")
@@ -35,12 +35,12 @@ struct AssistantView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("DEVHUB AI", systemImage: "sparkles")
+                    Label("BYTE · DEVHUB AI", systemImage: "sparkles")
                         .font(.caption.bold()).foregroundStyle(StudioTheme.accent)
-                    Text("Vad ska vi bygga idag?")
+                    Text("Byte är redo att jobba")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(StudioTheme.text)
-                    Text("Välj ett av dina sex projekt och ge assistenten en uppgift.")
+                    Text("Välj ett projekt och ge Byte ett uppdrag.")
                         .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
                 }
                 connectionCard
@@ -64,7 +64,7 @@ struct AssistantView: View {
                 }
                 if let analysisText {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("AI-resultat", systemImage: "sparkles")
+                        Label("Bytes analys", systemImage: "sparkles")
                             .font(.headline).foregroundStyle(StudioTheme.text)
                         Group {
                             if let formatted = try? AttributedString(markdown: analysisText) {
@@ -192,7 +192,7 @@ struct AssistantView: View {
             }
             .disabled(isSending || task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !hasSavedToken)
             if !hasSavedToken {
-                Text("Spara GitHub-token först för att aktivera assistenten.")
+                Text("Spara GitHub-token först för att aktivera Byte.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             }
         }
