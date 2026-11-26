@@ -417,7 +417,16 @@ struct AssistantView: View {
                     statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"
                     task = ""
                 }
-                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, token: token)
+                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, token: token) { runID, runURL in
+                    await MainActor.run {
+                        if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                            item.workflowRunID = runID
+                            item.workflowURL = runURL?.absoluteString
+                            item.statusRawValue = "running"
+                            item.updatedAt = .now
+                        }
+                    }
+                }
                 await MainActor.run {
                     isSending = false
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
@@ -558,7 +567,11 @@ private enum GitHubWorkflowClient {
         return RunStatus(status: run.status, conclusion: run.conclusion, url: URL(string: run.html_url))
     }
 
-    static func waitForRun(startedAt: Date, token: String) async throws -> RunResult {
+    static func waitForRun(
+        startedAt: Date,
+        token: String,
+        onRunFound: @escaping (Int, URL?) async -> Void
+    ) async throws -> RunResult {
         let formatter = ISO8601DateFormatter()
         for _ in 0..<40 {
             try await Task.sleep(nanoseconds: 3_000_000_000)
@@ -570,6 +583,8 @@ private enum GitHubWorkflowClient {
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.statusCheck }
             let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
             guard let run = runs.first(where: { $0.event == "workflow_dispatch" && (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10) }) else { continue }
+            let runURL = URL(string: run.html_url)
+            await onRunFound(run.id, runURL)
             if run.status == "completed" {
                 let message = run.conclusion == "success" ? "AI-analysen lyckades! Resultatet finns i GitHub-körningens Summary." : "AI-körningen avslutades med fel (\(run.conclusion ?? "okänt fel")). Öppna körningen för detaljer."
                 return RunResult(id: run.id, message: message, url: URL(string: run.html_url))
