@@ -121,7 +121,7 @@ struct GitHubActivityFeedView: View {
                 let workflow = try? await service.fetchLatestWorkflowRun(repository: project.repository)
                 let workflowSucceeded = workflow?.conclusion == "success"
                 let workflowLabel = workflow.map { run in
-                    if run.status != "completed" { return "Bygger" }
+                    if run.status != "completed" { return "Actions körs" }
                     return run.conclusion == "success" ? "Bygge OK" : "Bygge: \(run.conclusion ?? "okänt")"
                 }
                 latest.append(
