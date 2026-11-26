@@ -941,7 +941,7 @@ struct AssistantView: View {
     }
 }
 
-private enum GitHubTokenStore {
+enum GitHubTokenStore {
     private static let service = "se.niklas.devhub.github"
     private static let account = "workflow-token"
 

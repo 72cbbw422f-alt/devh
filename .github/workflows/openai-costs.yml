@@ -1,0 +1,80 @@
+name: OpenAI cost snapshot
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * *"
+permissions:
+  contents: write
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch organization costs
+        env:
+          OPENAI_ADMIN_KEY: \${{ secrets.OPENAI_ADMIN_KEY }}
+        run: |
+          test -n "$OPENAI_ADMIN_KEY" || { echo "Missing OPENAI_ADMIN_KEY repository secret"; exit 1; }
+          python3 - <<'PY'
+          import datetime, json, os, urllib.parse, urllib.request
+          now = datetime.datetime.now(datetime.timezone.utc)
+          start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+          params = {
+              "start_time": int(start.timestamp()),
+              "end_time": int(now.timestamp()),
+              "bucket_width": "1d",
+              "limit": 31,
+              "group_by": ["project_id", "line_item"]
+          }
+          query = urllib.parse.urlencode(params, doseq=True)
+          request = urllib.request.Request(
+              "https://api.openai.com/v1/organization/costs?" + query,
+              headers={"Authorization": "Bearer " + os.environ["OPENAI_ADMIN_KEY"],
+                       "Content-Type": "application/json"})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              payload = json.load(response)
+          daily = {}
+          projects = {}
+          line_items = {}
+          total = 0.0
+          for bucket in payload.get("data", []):
+              day = datetime.datetime.fromtimestamp(bucket["start_time"], datetime.timezone.utc).date().isoformat()
+              daily.setdefault(day, 0.0)
+              for item in bucket.get("results", []):
+                  value = float((item.get("amount") or {}).get("value") or 0)
+                  total += value
+                  daily[day] += value
+                  project = item.get("project_id") or "unassigned"
+                  label = item.get("line_item") or "Other"
+                  projects[project] = projects.get(project, 0.0) + value
+                  line_items[label] = line_items.get(label, 0.0) + value
+          snapshot = {
+              "updatedAt": now.isoformat(),
+              "monthStart": start.date().isoformat(),
+              "currency": "USD",
+              "monthToDateUSD": round(total, 6),
+              "daily": [{"date": k, "costUSD": round(v, 6)} for k, v in sorted(daily.items())],
+              "projects": [{"projectID": k, "costUSD": round(v, 6)} for k, v in sorted(projects.items(), key=lambda x: -x[1])],
+              "lineItems": [{"name": k, "costUSD": round(v, 6)} for k, v in sorted(line_items.items(), key=lambda x: -x[1])]
+          }
+          os.makedirs("data", exist_ok=True)
+          with open("data/openai-costs.json", "w") as f:
+              json.dump(snapshot, f, indent=2)
+          PY
+      - name: Publish snapshot to data branch
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin openai-metrics || true
+          if git show-ref --verify --quiet refs/remotes/origin/openai-metrics; then
+            git checkout -B openai-metrics origin/openai-metrics
+          else
+            git checkout --orphan openai-metrics
+            git rm -rf . || true
+          fi
+          mkdir -p data
+          cp "$GITHUB_WORKSPACE/data/openai-costs.json" data/openai-costs.json
+          git add data/openai-costs.json
+          git commit -m "Update OpenAI cost snapshot"
+          git push origin openai-metrics

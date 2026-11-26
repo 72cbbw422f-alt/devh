@@ -56,6 +56,8 @@ struct ContentView: View {
                         AnalyticsView()
                     } else if tab == .notifications {
                         NotificationCenterView()
+                    } else if tab == .revenue {
+                        OpenAIEconomyView()
                     } else {
                         PlaceholderView(tab: tab)
                     }
