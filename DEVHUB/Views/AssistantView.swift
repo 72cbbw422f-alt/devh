@@ -117,8 +117,15 @@ struct AssistantView: View {
                 }
             }
             .pickerStyle(.menu).tint(StudioTheme.accent)
-            TextField("Vad vill du att AI:n ska undersöka?", text: $task, axis: .vertical)
-                .lineLimit(4...7).padding(12)
+            TextField(
+                text: $task,
+                prompt: Text("Vad vill du att AI:n ska undersöka?").foregroundColor(StudioTheme.muted),
+                axis: .vertical
+            )
+                .lineLimit(4...7)
+                .foregroundStyle(StudioTheme.text)
+                .tint(StudioTheme.accent)
+                .padding(12)
                 .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
             Button(action: submitTask) {
                 HStack {
