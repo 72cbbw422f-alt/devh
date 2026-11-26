@@ -143,6 +143,11 @@ jobs:
           previous_response_id = os.environ.get("PREVIOUS_RESPONSE_ID", "").strip()
           if previous_response_id:
               payload["previous_response_id"] = previous_response_id
+              payload["input"] = [
+                  {"role": "system", "content": system},
+                  {"role": "user", "content": "Continue the existing conversation. Repository: " +
+                   os.environ["PROJECT_REPOSITORY"] + "\nFollow-up: " + os.environ["TASK"]}
+              ]
           request = urllib.request.Request(
               "https://api.openai.com/v1/responses",
               data=json.dumps(payload).encode(),
