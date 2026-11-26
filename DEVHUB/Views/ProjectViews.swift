@@ -82,12 +82,22 @@ struct ProjectListView: View {
     let onSelect: (StudioProject) -> Void
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \StudioProjectRecord.createdAt) private var records: [StudioProjectRecord]
+    @Query private var projectTasks: [ProjectTaskItem]
     @State private var showArchived = false
     @State private var editingRecord: StudioProjectRecord?
     @State private var showingEditor = false
 
     private var visibleRecords: [StudioProjectRecord] {
         records.filter { $0.isArchived == showArchived }
+    }
+
+    private func calculatedProgress(for record: StudioProjectRecord) -> Double {
+        let tasks = projectTasks.filter { $0.projectID == record.id }
+        let totalWeight = tasks.reduce(0) { $0 + max(1, min($1.weight ?? 1, 5)) }
+        let completedWeight = tasks.filter(\.isCompleted).reduce(0) {
+            $0 + max(1, min($1.weight ?? 1, 5))
+        }
+        return totalWeight == 0 ? 0 : Double(completedWeight) / Double(totalWeight)
     }
 
     var body: some View {
@@ -103,10 +113,10 @@ struct ProjectListView: View {
                             Text(record.name).font(.headline).foregroundStyle(StudioTheme.text)
                             Text(record.repository.isEmpty ? record.platform : record.repository)
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
-                            ProgressView(value: record.progress).tint(Color(hex: record.accent))
+                            ProgressView(value: calculatedProgress(for: record)).tint(Color(hex: record.accent))
                         }
                         Spacer()
-                        Text("\(Int(record.progress * 100))%")
+                        Text("\(Int(calculatedProgress(for: record) * 100))%")
                             .font(.caption.monospacedDigit().weight(.semibold))
                             .foregroundStyle(StudioTheme.accent)
                     }
