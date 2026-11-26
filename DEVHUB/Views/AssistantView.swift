@@ -54,6 +54,7 @@ struct AssistantView: View {
                 byteControlCard
                 connectionCard
                 requestCard
+                byteQueueCard
                 if let statusMessage {
                     Text(statusMessage)
                         .font(.subheadline)
