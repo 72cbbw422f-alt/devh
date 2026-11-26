@@ -1,78 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 <defs>
-  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-    <stop stop-color="#070B1C"/><stop offset=".55" stop-color="#101A38"/><stop offset="1" stop-color="#090F25"/>
-  </linearGradient>
-  <radialGradient id="ambience" cx=".5" cy=".48" r=".55">
-    <stop stop-color="#5145C9" stop-opacity=".42"/><stop offset=".55" stop-color="#263D8B" stop-opacity=".16"/><stop offset="1" stop-color="#101A38" stop-opacity="0"/>
-  </radialGradient>
-  <linearGradient id="wire" x1="0" y1="0" x2="1" y2="1">
-    <stop stop-color="#53D8E8"/><stop offset=".48" stop-color="#8B7CFF"/><stop offset="1" stop-color="#398BFF"/>
-  </linearGradient>
-  <linearGradient id="hub" x1=".15" y1="0" x2=".85" y2="1">
-    <stop stop-color="#B8AEFF"/><stop offset=".42" stop-color="#7869FF"/><stop offset="1" stop-color="#287FEA"/>
-  </linearGradient>
-  <linearGradient id="nodeA" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7BEAF0"/><stop offset="1" stop-color="#398BFF"/></linearGradient>
-  <linearGradient id="nodeB" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B7A9FF"/><stop offset="1" stop-color="#6254D9"/></linearGradient>
-  <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
-    <feGaussianBlur stdDeviation="36"/>
-  </filter>
-  <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
-    <feGaussianBlur stdDeviation="13" result="blur"/>
-    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-  <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-    <feGaussianBlur stdDeviation="22"/>
-  </filter>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#070B1C"/><stop offset=".55" stop-color="#101A38"/><stop offset="1" stop-color="#090F25"/></linearGradient>
+  <radialGradient id="glow"><stop stop-color="#7164F2" stop-opacity=".5"/><stop offset="1" stop-color="#7164F2" stop-opacity="0"/></radialGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8CEBFF"/><stop offset=".5" stop-color="#35A9EE"/><stop offset="1" stop-color="#2875D7"/></linearGradient>
+  <linearGradient id="white" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9D5F0"/></linearGradient>
+  <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#18264C"/><stop offset="1" stop-color="#080F27"/></linearGradient>
+  <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="28"/></filter>
 </defs>
-<!-- Deep midnight glass field -->
 <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
-<rect x="18" y="18" width="988" height="988" rx="210" fill="url(#ambience)"/>
-<circle cx="512" cy="500" r="340" fill="#7164F2" opacity=".13" filter="url(#softGlow)"/>
-<circle cx="512" cy="512" r="342" fill="none" stroke="#8C9BFF" stroke-width="2" opacity=".10"/>
-<circle cx="512" cy="512" r="286" fill="none" stroke="#5B72C8" stroke-width="2" opacity=".12"/>
-<!-- Network shadow and luminous paths -->
-<g fill="none" stroke="#05091A" stroke-width="58" stroke-linecap="round" stroke-linejoin="round" opacity=".55" transform="translate(0 12)" filter="url(#shadow)">
-  <path d="M512 490 L512 286 Q512 238 464 238 L330 238"/>
-  <path d="M534 490 L716 386 Q758 362 758 314 L758 274"/>
-  <path d="M490 534 L338 622 Q296 646 296 694 L296 750"/>
-  <path d="M534 534 L684 686 Q718 720 766 720 L792 720"/>
-</g>
-<g fill="none" stroke="url(#wire)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M512 490 L512 286 Q512 238 464 238 L330 238"/>
-  <path d="M534 490 L716 386 Q758 362 758 314 L758 274"/>
-  <path d="M490 534 L338 622 Q296 646 296 694 L296 750"/>
-  <path d="M534 534 L684 686 Q718 720 766 720 L792 720"/>
-</g>
-<g fill="none" stroke="#D9D6FF" stroke-width="5" stroke-linecap="round" opacity=".42">
-  <path d="M512 490 L512 286 Q512 238 464 238 L330 238"/>
-  <path d="M534 490 L716 386 Q758 362 758 314 L758 274"/>
-  <path d="M490 534 L338 622 Q296 646 296 694 L296 750"/>
-  <path d="M534 534 L684 686 Q718 720 766 720 L792 720"/>
-</g>
-<!-- Satellite nodes -->
-<g filter="url(#glow)">
-  <circle cx="330" cy="238" r="76" fill="#43C8E5" opacity=".18"/>
-  <circle cx="330" cy="238" r="52" fill="url(#nodeA)"/>
-  <circle cx="330" cy="238" r="26" fill="#E8FFFF"/>
-  <circle cx="758" cy="274" r="76" fill="#398BFF" opacity=".18"/>
-  <circle cx="758" cy="274" r="52" fill="url(#nodeA)"/>
-  <circle cx="758" cy="274" r="25" fill="#EAF4FF"/>
-  <circle cx="296" cy="750" r="76" fill="#7164F2" opacity=".2"/>
-  <circle cx="296" cy="750" r="52" fill="url(#nodeB)"/>
-  <circle cx="296" cy="750" r="25" fill="#F0EDFF"/>
-  <circle cx="792" cy="720" r="72" fill="#7164F2" opacity=".18"/>
-  <circle cx="792" cy="720" r="48" fill="url(#nodeB)"/>
-  <circle cx="792" cy="720" r="22" fill="#F0EDFF"/>
-</g>
-<!-- Central intelligence hub -->
-<circle cx="512" cy="512" r="174" fill="#5145D7" opacity=".20" filter="url(#softGlow)"/>
-<circle cx="512" cy="512" r="132" fill="#0C1430" stroke="#9B91FF" stroke-width="8" opacity=".98"/>
-<circle cx="512" cy="512" r="112" fill="url(#hub)" filter="url(#glow)"/>
-<circle cx="512" cy="512" r="82" fill="none" stroke="#E7E4FF" stroke-width="4" opacity=".48"/>
-<path d="M512 440 L570 474 L570 550 L512 584 L454 550 L454 474 Z" fill="#F5F4FF" opacity=".95"/>
-<path d="M512 458 L554 482 L554 536 L512 560 L470 536 L470 482 Z" fill="url(#hub)"/>
-<circle cx="512" cy="509" r="19" fill="#F7FBFF"/>
-<!-- restrained glass highlight -->
-<path d="M245 180 Q512 82 779 180" fill="none" stroke="#C8D2FF" stroke-width="5" opacity=".08" stroke-linecap="round"/>
+<circle cx="512" cy="510" r="430" fill="url(#glow)"/>
+<ellipse cx="512" cy="866" rx="260" ry="48" fill="#7164F2" opacity=".42" filter="url(#shadow)"/>
+<!-- tiny antenna -->
+<path d="M512 116V166" stroke="#A8B9E8" stroke-width="28" stroke-linecap="round"/>
+<circle cx="512" cy="105" r="34" fill="#7164F2" stroke="#D8D4FF" stroke-width="10"/>
+<!-- ear pods -->
+<rect x="166" y="390" width="116" height="250" rx="56" fill="url(#blue)" stroke="#A8EFFF" stroke-width="12"/>
+<rect x="742" y="390" width="116" height="250" rx="56" fill="url(#white)" stroke="#EAF0FF" stroke-width="12"/>
+<!-- body -->
+<path d="M310 694Q310 650 354 650H670Q714 650 714 694V822Q714 866 670 866H354Q310 866 310 822Z" fill="#111D3B" stroke="#8195C8" stroke-width="12"/>
+<path d="M322 706Q322 674 356 674H512V850H356Q322 850 322 816Z" fill="url(#blue)"/>
+<path d="M512 674H668Q702 674 702 706V816Q702 850 668 850H512Z" fill="url(#white)"/>
+<path d="M376 865Q340 865 340 900Q340 934 390 934H468Q496 934 496 906Q496 865 458 865Z" fill="url(#blue)"/>
+<path d="M566 865Q528 865 528 906Q528 934 556 934H634Q684 934 684 900Q684 865 648 865Z" fill="url(#white)"/>
+<!-- head shell split -->
+<path d="M220 390Q220 218 392 188Q452 176 512 176V682H386Q220 682 220 516Z" fill="url(#blue)" stroke="#9DEBFF" stroke-width="14"/>
+<path d="M512 176Q572 176 632 188Q804 218 804 390V516Q804 682 638 682H512Z" fill="url(#white)" stroke="#F4F6FF" stroke-width="14"/>
+<!-- face screen -->
+<rect x="278" y="306" width="468" height="310" rx="132" fill="url(#screen)" stroke="#7188C5" stroke-width="12"/>
+<path d="M408 454Q438 412 468 454" fill="none" stroke="#EAFBFF" stroke-width="24" stroke-linecap="round"/>
+<path d="M556 454Q586 412 616 454" fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round"/>
+<path d="M454 520Q512 574 570 520" fill="none" stroke="#B9EFFF" stroke-width="22" stroke-linecap="round"/>
+<circle cx="372" cy="548" r="15" fill="#7164F2" opacity=".85"/><circle cx="652" cy="548" r="15" fill="#7164F2" opacity=".85"/>
+<!-- chest badge -->
+<circle cx="512" cy="760" r="42" fill="#101A38" opacity=".88" stroke="#E9F5FF" stroke-width="8"/>
+<path d="M512 731L538 746V776L512 791L486 776V746Z" fill="#8DDEFF"/>
 </svg>
