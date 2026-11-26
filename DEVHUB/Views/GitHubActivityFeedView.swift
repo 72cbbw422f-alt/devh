@@ -1,0 +1,128 @@
+import SwiftUI
+
+private struct GitHubActivityItem: Identifiable {
+    let id: String
+    let projectName: String
+    let repositoryURL: URL
+    let commitURL: URL?
+    let message: String?
+    let pushedAt: Date?
+}
+
+struct GitHubActivityFeedView: View {
+    let projects: [StudioProject]
+    @State private var items: [GitHubActivityItem] = []
+    @State private var isLoading = false
+    @State private var hasLoaded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if isLoading && items.isEmpty {
+                HStack(spacing: 10) {
+                    ProgressView().tint(StudioTheme.accent)
+                    Text("Hämtar senaste aktivitet från GitHub…")
+                        .font(.caption).foregroundStyle(StudioTheme.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
+            } else if items.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.branch")
+                        .font(.title2).foregroundStyle(StudioTheme.accent)
+                    Text(hasLoaded ? "Ingen GitHub-aktivitet hittades" : "Aktivitetsflödet väntar")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                    Text("Kontrollera att projekten har publika GitHub-repositoryn kopplade.")
+                        .font(.caption).foregroundStyle(StudioTheme.muted)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity).padding(20)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        HStack(alignment: .top, spacing: 11) {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(StudioTheme.accentCyan)
+                                .frame(width: 30, height: 30)
+                                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(item.projectName)
+                                        .font(.caption.weight(.bold)).foregroundStyle(StudioTheme.text)
+                                    Spacer()
+                                    if let pushedAt = item.pushedAt {
+                                        Text(pushedAt, style: .relative)
+                                            .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
+                                    }
+                                }
+                                Text(item.message ?? "Repository uppdaterat")
+                                    .font(.caption).foregroundStyle(StudioTheme.secondaryText)
+                                    .lineLimit(2)
+                                HStack(spacing: 12) {
+                                    Link("Repository", destination: item.repositoryURL)
+                                    if let commitURL = item.commitURL {
+                                        Link("Commit", destination: commitURL)
+                                    }
+                                }
+                                .font(.system(size: 10, weight: .semibold))
+                                .tint(StudioTheme.accent)
+                            }
+                        }
+                        .padding(.vertical, 12)
+                        if item.id != items.last?.id {
+                            Divider().overlay(StudioTheme.border)
+                        }
+                    }
+                }
+                .padding(.horizontal, 15)
+            }
+        }
+        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
+        .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
+        .overlay(alignment: .topTrailing) {
+            if !items.isEmpty {
+                Button {
+                    Task { await refresh() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(StudioTheme.accent)
+                        .padding(12)
+                }
+                .accessibilityLabel("Uppdatera aktivitetsflödet")
+            }
+        }
+        .task { await refresh() }
+    }
+
+    @MainActor
+    private func refresh() async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
+
+        var latest: [GitHubActivityItem] = []
+        let service = GitHubRepositoryService()
+        for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            do {
+                let result = try await service.fetchSnapshot(repository: project.repository)
+                latest.append(
+                    GitHubActivityItem(
+                        id: project.id,
+                        projectName: project.name,
+                        repositoryURL: result.0.htmlURL,
+                        commitURL: result.1?.htmlURL,
+                        message: result.1?.commit.message.components(separatedBy: .newlines).first,
+                        pushedAt: result.0.pushedAt
+                    )
+                )
+            } catch {
+                continue
+            }
+        }
+        items = latest.sorted { ($0.pushedAt ?? .distantPast) > ($1.pushedAt ?? .distantPast) }
+    }
+}
