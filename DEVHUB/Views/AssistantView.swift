@@ -317,6 +317,9 @@ struct AssistantView: View {
         let prompt = task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
         focusedField = nil
+        let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt)
+        modelContext.insert(queueItem)
+        let queueItemID = queueItem.id
         isSending = true
         statusMessage = nil
         workflowURL = nil
@@ -326,10 +329,22 @@ struct AssistantView: View {
         Task {
             do {
                 try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, token: token)
-                await MainActor.run {\n                    if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {\n                        item.statusRawValue = "running"\n                        item.updatedAt = .now\n                    }\n                    statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"; task = ""\n                }
+                await MainActor.run {
+                    if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                        item.statusRawValue = "running"
+                        item.updatedAt = .now
+                    }
+                    statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"
+                    task = ""
+                }
                 let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, token: token)
                 await MainActor.run {
                     isSending = false
+                    if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                        item.statusRawValue = result.message.contains("lyckades") ? "completed" : "failed"
+                        item.updatedAt = .now
+                        item.workflowURL = result.url?.absoluteString
+                    }
                     runStatus = result.message
                     workflowURL = result.url
                     modelContext.insert(DEVHUBNotification(
@@ -353,6 +368,10 @@ struct AssistantView: View {
             } catch {
                 await MainActor.run {
                     isSending = false
+                    if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                        item.statusRawValue = "failed"
+                        item.updatedAt = .now
+                    }
                     statusMessage = error.localizedDescription
                     runStatus = "Kunde inte bekräfta att AI-körningen blev klar."
                     modelContext.insert(DEVHUBNotification(
