@@ -201,12 +201,24 @@ struct ProjectDetailView: View {
     }
 
     private var completedCount: Int { storedTasks.filter(\.isCompleted).count }
+    private var totalWeight: Int { storedTasks.reduce(0) { $0 + max(1, min($1.weight ?? 1, 5)) } }
+    private var completedWeight: Int {
+        storedTasks.filter(\.isCompleted).reduce(0) { $0 + max(1, min($1.weight ?? 1, 5)) }
+    }
+    private var calculatedProgress: Double {
+        totalWeight == 0 ? 0 : Double(completedWeight) / Double(totalWeight)
+    }
+    private var displayProject: StudioProject {
+        var value = project
+        value.progress = calculatedProgress
+        return value
+    }
     private var githubRepositoryPath: String { project.repository.contains("/") ? project.repository : "72cbbw422f-alt/\(project.repository)" }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                ProjectCard(project: project)
+                ProjectCard(project: displayProject)
 
                 VStack(alignment: .leading, spacing: 12) {
                     SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
@@ -235,11 +247,15 @@ struct ProjectDetailView: View {
                     HStack {
                         SectionHeading(eyebrow: "ATT GÖRA", title: "Arbetslista")
                         Spacer()
-                        Text("\(completedCount)/\(storedTasks.count)")
-                            .font(.caption.monospacedDigit().bold()).foregroundStyle(StudioTheme.accentCyan)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(Int(calculatedProgress * 100))%")
+                                .font(.caption.monospacedDigit().bold()).foregroundStyle(StudioTheme.accentCyan)
+                            Text("\(completedCount)/\(storedTasks.count) uppgifter")
+                                .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
+                        }
                     }
                     if storedTasks.isEmpty {
-                        Text("Förbereder projektets första uppgifter…")
+                        Text("Lägg till arbetsuppgifter för att börja mäta framsteg.")
                             .font(.caption).foregroundStyle(StudioTheme.muted)
                     } else {
                         ForEach(storedTasks) { task in
@@ -247,11 +263,24 @@ struct ProjectDetailView: View {
                                 HStack(spacing: 11) {
                                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                                         .font(.title3).foregroundStyle(task.isCompleted ? StudioTheme.accentCyan : StudioTheme.muted)
-                                    Text(task.title)
-                                        .font(.subheadline)
-                                        .foregroundStyle(task.isCompleted ? StudioTheme.muted : StudioTheme.text)
-                                        .strikethrough(task.isCompleted, color: StudioTheme.muted)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(task.title)
+                                            .font(.subheadline)
+                                            .foregroundStyle(task.isCompleted ? StudioTheme.muted : StudioTheme.text)
+                                            .strikethrough(task.isCompleted, color: StudioTheme.muted)
+                                        Text("Vikt \(max(1, min(task.weight ?? 1, 5))) av 5")
+                                            .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
+                                    }
                                     Spacer()
+                                    Menu {
+                                        ForEach(1...5, id: \.self) { weight in
+                                            Button("Vikt \(weight)") { task.weight = weight }
+                                        }
+                                    } label: {
+                                        Image(systemName: "slider.horizontal.3")
+                                            .font(.caption).foregroundStyle(StudioTheme.muted)
+                                            .padding(8)
+                                    }
                                 }
                                 .contentShape(Rectangle())
                             }
@@ -279,7 +308,7 @@ struct ProjectDetailView: View {
                 .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
 
                 GitHubRepositoryStatusView(repository: githubRepositoryPath)
-                Text("Uppgifter sparas lokalt på enheten med SwiftData. GitHub-synkronisering av milstolpar planeras separat.")
+                Text("Framsteg räknas automatiskt från avklarade uppgifter och deras vikt (1–5). Uppgifterna sparas lokalt på enheten. GitHub-synkronisering planeras separat.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             }
             .padding(18)
@@ -301,8 +330,8 @@ struct ProjectDetailView: View {
 
     private func seedTasksIfNeeded() {
         guard storedTasks.isEmpty else { return }
-        for title in suggestedTasks {
-            modelContext.insert(ProjectTaskItem(projectID: project.id, title: title))
+        for (index, title) in suggestedTasks.enumerated() {
+            modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, weight: index == 0 ? 3 : 2))
         }
     }
 }
