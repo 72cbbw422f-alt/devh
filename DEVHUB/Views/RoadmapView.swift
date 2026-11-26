@@ -36,8 +36,8 @@ struct RoadmapView: View {
                     .foregroundStyle(StudioTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(18)
-            .frame(maxWidth: 850)
+            .padding(28)
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
         .background(StudioTheme.background.ignoresSafeArea())
