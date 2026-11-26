@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AddProjectView: View {
     @Environment(\.dismiss) private var dismiss
-    let onSave: (StudioProject) -> Void
+    let existingProject: StudioProject?\n    let onSave: (StudioProject) -> Void\n\n    init(project: StudioProject? = nil, onSave: @escaping (StudioProject) -> Void) {\n        self.existingProject = project\n        self.onSave = onSave\n        _name = State(initialValue: project?.name ?? "")\n        _subtitle = State(initialValue: project?.subtitle ?? "")\n        _repository = State(initialValue: project?.repository ?? "")\n        _platform = State(initialValue: project?.platform ?? "iOS")\n        _category = State(initialValue: project?.category ?? "App")\n        _status = State(initialValue: project?.status ?? .planning)\n        _accent = State(initialValue: project?.accent ?? "7164F2")\n        _symbol = State(initialValue: project?.symbol ?? "app.fill")\n    }
 
     @State private var name = ""
     @State private var subtitle = ""
@@ -68,14 +68,14 @@ struct AddProjectView: View {
             }
             .scrollContentBackground(.hidden)
             .background(StudioTheme.background)
-            .navigationTitle("Nytt projekt")
+            .navigationTitle(existingProject == nil ? "Nytt projekt" : "Redigera projekt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Avbryt") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Lägg till") { save() }.disabled(!isValid)
+                    Button(existingProject == nil ? "Lägg till" : "Spara") { save() }.disabled(!isValid)
                 }
             }
         }
@@ -94,11 +94,11 @@ struct AddProjectView: View {
             platform: platform,
             category: category,
             repository: repo,
-            progress: 0,
+            progress: existingProject?.progress ?? 0,
             status: status,
             symbol: symbol,
             accent: accent,
-            nextMilestone: "Definiera projektets första milstolpe"
+            nextMilestone: existingProject?.nextMilestone ?? "Definiera projektets första milstolpe"
         )
         onSave(project)
         dismiss()
