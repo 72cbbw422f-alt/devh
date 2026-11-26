@@ -34,7 +34,7 @@ struct ContentView: View {
                     .navigationDestination(item:$selectedProject) { ProjectDetailView(project:$0) }
             }.tabItem { Label(StudioTab.overview.rawValue,systemImage:StudioTab.overview.symbol) }.tag(StudioTab.overview)
             NavigationStack {
-                ProjectListView(projects:projects) { selectedProject = $0 }
+                ProjectListView { selectedProject = $0 }
                     .navigationDestination(item:$selectedProject) { ProjectDetailView(project:$0) }
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
