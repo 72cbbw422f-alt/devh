@@ -1,0 +1,136 @@
+name: DEVHUB Apply Approved Patch
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_repository:
+        description: Target project repository
+        required: true
+        type: choice
+        options:
+          - 72cbbw422f-alt/project-orbit
+          - 72cbbw422f-alt/fam
+          - 72cbbw422f-alt/watch
+          - 72cbbw422f-alt/vill
+          - 72cbbw422f-alt/hem
+          - 72cbbw422f-alt/devh
+      base_sha:
+        description: Exact source commit reviewed in DEVHUB
+        required: true
+        type: string
+      patch:
+        description: Exact unified diff approved in DEVHUB
+        required: true
+        type: string
+      task_title:
+        description: Short description for branch and pull request
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  apply-approved-patch:
+    name: Apply reviewed patch and open pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Validate required write token
+        env:
+          PROJECTS_GITHUB_TOKEN: ${{ secrets.PROJECTS_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$PROJECTS_GITHUB_TOKEN" ]; then
+            echo "::error::Add PROJECTS_GITHUB_TOKEN as a DEVHUB repository secret. It must have Contents: Read and write and Pull requests: Read and write for the selected project repositories."
+            exit 1
+          fi
+
+      - name: Check out reviewed base commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.project_repository }}
+          ref: ${{ inputs.base_sha }}
+          token: ${{ secrets.PROJECTS_GITHUB_TOKEN }}
+          path: project
+          fetch-depth: 0
+
+      - name: Verify base is still current and validate patch
+        working-directory: project
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          PATCH: ${{ inputs.patch }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          if [ "$actual" != "$BASE_SHA" ]; then
+            echo "::error::Checked-out commit does not match the reviewed base SHA."
+            exit 1
+          fi
+          git fetch origin main
+          latest="$(git rev-parse origin/main)"
+          if [ "$latest" != "$BASE_SHA" ]; then
+            echo "::error::The project's main branch has changed since this patch was reviewed. Ask Byte to regenerate the proposal."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os
+          from pathlib import PurePosixPath
+          patch = os.environ["PATCH"]
+          if not patch.strip() or len(patch) > 60000:
+              raise SystemExit("Patch is empty or exceeds the safe size limit.")
+          lines = patch.splitlines()
+          paths = []
+          for line in lines:
+              if line.startswith(("--- ", "+++ ")):
+                  path = line[4:].split("\t", 1)[0].strip()
+                  if path == "/dev/null":
+                      continue
+                  if path.startswith(("a/", "b/")):
+                      path = path[2:]
+                  p = PurePosixPath(path)
+                  if p.is_absolute() or ".." in p.parts or not p.parts:
+                      raise SystemExit("Unsafe path in patch: " + path)
+                  if path.startswith(".git/") or path == ".git":
+                      raise SystemExit("Patch may not modify Git metadata.")
+                  paths.append(path)
+          if not paths:
+              raise SystemExit("No file paths found in patch.")
+          if len(set(paths)) > 20:
+              raise SystemExit("Patch touches more than 20 files.")
+          open("/tmp/byte-approved.patch", "w", encoding="utf-8").write(patch + "\n")
+          PY
+          git apply --check /tmp/byte-approved.patch
+          git apply /tmp/byte-approved.patch
+
+      - name: Create branch, commit, and pull request
+        working-directory: project
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_GITHUB_TOKEN }}
+          PROJECT_REPOSITORY: ${{ inputs.project_repository }}
+          TASK_TITLE: ${{ inputs.task_title }}
+          BASE_SHA: ${{ inputs.base_sha }}
+        run: |
+          set -euo pipefail
+          slug="$(printf '%s' "$TASK_TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | cut -c1-32 | sed -E 's/^-+|-+$//g')"
+          branch="byte/approved-$GITHUB_RUN_ID-${slug:-change}"
+          git config user.name "DEVHUB Byte"
+          git config user.email "devhub-byte@users.noreply.github.com"
+          git checkout -b "$branch" "$BASE_SHA"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::error::The approved patch produced no changes."
+            exit 1
+          fi
+          git commit -m "Byte: $TASK_TITLE"
+          git push origin "$branch"
+          gh pr create --repo "$PROJECT_REPOSITORY" --base main --head "$branch" --title "Byte: $TASK_TITLE" --body "## DEVHUB Byte – approved code proposal
+
+This pull request contains the exact patch explicitly approved in DEVHUB.
+
+- Reviewed base commit: `$BASE_SHA`
+- Branch: `$branch`
+- Changes are proposed for review; this workflow does not merge the pull request.
+
+Please review CI results and the complete diff before merging."
