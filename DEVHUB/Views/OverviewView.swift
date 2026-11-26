@@ -4,7 +4,12 @@ struct OverviewView: View {
     let projects: [StudioProject]
     let onSelect: (StudioProject) -> Void
 
-    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private var columns: [GridItem] {
+        horizontalSizeClass == .regular
+            ? [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
+            : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    }
     private var activeCount: Int { projects.filter { $0.status == .active }.count }
     private var averageProgress: Double {
         guard !projects.isEmpty else { return 0 }
@@ -41,8 +46,8 @@ struct OverviewView: View {
                 SectionHeading(eyebrow: "SENASTE", title: "Senaste aktivitet")
                 GitHubActivityFeedView(projects: projects)
             }
-            .padding(18)
-            .frame(maxWidth: 900)
+            .padding(horizontalSizeClass == .regular ? 28 : 18)
+            .frame(maxWidth: 1180)
             .frame(maxWidth: .infinity)
         }
         .background(StudioTheme.background.ignoresSafeArea())
@@ -57,7 +62,7 @@ struct OverviewView: View {
                 .tracking(1.2)
                 .foregroundStyle(StudioTheme.muted)
             Text("Bygg något fantastiskt.")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(size: horizontalSizeClass == .regular ? 36 : 30, weight: .bold, design: .rounded))
                 .foregroundStyle(StudioTheme.text)
             Text("Allt ditt utvecklingsarbete. På ett ställe.")
                 .font(.subheadline)
