@@ -14,6 +14,9 @@ final class ByteWorkItem {
     var analysisText: String?
     var workModeRawValue: String = "approval"
     var conversationResponseID: String?
+    var inputTokens: Int = 0
+    var outputTokens: Int = 0
+    var costUSD: Double = 0
 
     var workModeLabel: String {
         switch workModeRawValue {
