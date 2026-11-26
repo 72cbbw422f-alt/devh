@@ -15,6 +15,7 @@ struct AssistantView: View {
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
     @State private var task = ""
     @State private var queueFilter = "Alla"
+    @State private var isRefreshingQueue = false
     @State private var githubToken = ""
     @State private var hasSavedToken = false
     @State private var isSending = false
@@ -259,6 +260,17 @@ struct AssistantView: View {
                 Spacer()
                 Text("\(filteredQueueItems.count) av \(byteWorkItems.count) uppdrag")
                     .font(.caption.monospacedDigit()).foregroundStyle(StudioTheme.muted)
+                Button {
+                    refreshQueueStatuses()
+                } label: {
+                    if isRefreshingQueue {
+                        ProgressView().tint(StudioTheme.accent)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .disabled(isRefreshingQueue || !byteWorkItems.contains(where: { $0.workflowRunID != nil && $0.statusRawValue == "running" }))
+                .accessibilityLabel("Uppdatera arbetskön")
             }
             Picker("Visa", selection: $queueFilter) {
                 Text("Alla").tag("Alla")
@@ -302,6 +314,52 @@ struct AssistantView: View {
         .padding(15).frame(maxWidth: .infinity, alignment: .leading)
         .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
+    }
+
+    private func refreshQueueStatuses() {
+        guard let token = GitHubTokenStore.read() else {
+            statusMessage = "GitHub-token saknas. Spara den först för att uppdatera arbetskön."
+            return
+        }
+        let pendingItems = byteWorkItems.filter { $0.statusRawValue == "running" && $0.workflowRunID != nil }
+        guard !pendingItems.isEmpty else { return }
+        isRefreshingQueue = true
+        Task {
+            var completedCount = 0
+            var failedCount = 0
+            var errorCount = 0
+            for item in pendingItems {
+                guard let runID = item.workflowRunID else { continue }
+                do {
+                    let status = try await GitHubWorkflowClient.fetchRunStatus(runID: runID, token: token)
+                    await MainActor.run {
+                        item.workflowURL = status.url?.absoluteString ?? item.workflowURL
+                        item.updatedAt = .now
+                        if status.status == "completed" {
+                            if status.conclusion == "success" {
+                                item.statusRawValue = "completed"
+                                completedCount += 1
+                            } else {
+                                item.statusRawValue = "failed"
+                                failedCount += 1
+                                modelContext.insert(DEVHUBNotification(
+                                    title: "Byte-körningen misslyckades",
+                                    message: "GitHub avslutade uppdraget med status: \(status.conclusion ?? "okänt fel").",
+                                    category: "issue",
+                                    destinationURL: status.url?.absoluteString
+                                ))
+                            }
+                        }
+                    }
+                } catch {
+                    errorCount += 1
+                }
+            }
+            await MainActor.run {
+                isRefreshingQueue = false
+                statusMessage = "Arbetskön uppdaterad: \(completedCount) klara, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
+            }
+        }
     }
 
     private var filteredQueueItems: [ByteWorkItem] {
@@ -482,6 +540,22 @@ private enum GitHubWorkflowClient {
         let html_url: String
         let created_at: String
         let event: String
+    }
+
+    struct RunStatus { let status: String; let conclusion: String?; let url: URL? }
+
+    static func fetchRunStatus(runID: Int, token: String) async throws -> RunStatus {
+        let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)")!
+        var request = URLRequest(url: endpoint)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw WorkflowError.statusCheck
+        }
+        let run = try JSONDecoder().decode(WorkflowRun.self, from: data)
+        return RunStatus(status: run.status, conclusion: run.conclusion, url: URL(string: run.html_url))
     }
 
     static func waitForRun(startedAt: Date, token: String) async throws -> RunResult {
