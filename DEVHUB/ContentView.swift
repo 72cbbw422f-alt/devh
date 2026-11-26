@@ -47,8 +47,15 @@ struct ContentView: View {
             NavigationStack { AssistantView() }
                 .tabItem { Label(StudioTab.assistant.rawValue,systemImage:StudioTab.assistant.symbol) }.tag(StudioTab.assistant)
             ForEach([StudioTab.activity,.roadmap,.revenue,.analytics]) { tab in
-                NavigationStack { PlaceholderView(tab:tab) }
-                    .tabItem { Label(tab.rawValue,systemImage:tab.symbol) }.tag(tab)
+                NavigationStack {
+                    if tab == .roadmap {
+                        RoadmapView(projects: projects) { selectedProject = $0 }
+                    } else {
+                        PlaceholderView(tab: tab)
+                    }
+                }
+                .navigationDestination(item: $selectedProject) { ProjectDetailView(project: $0) }
+                .tabItem { Label(tab.rawValue, systemImage: tab.symbol) }.tag(tab)
             }
         }
         .tint(StudioTheme.accent)
