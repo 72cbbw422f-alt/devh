@@ -37,7 +37,14 @@ struct ContentView: View {
     @State private var showingAddProject = false
 
     private var projects: [StudioProject] {
-        storedProjects.filter { !$0.isArchived }.map(\.project)
+        storedProjects.filter { !$0.isArchived }.map { record in
+            var project = record.project
+            let tasks = storedTasks.filter { $0.projectID == record.id }
+            let totalWeight = tasks.reduce(0) { $0 + max(1, min($1.weight ?? 1, 5)) }
+            let completedWeight = tasks.filter(\.isCompleted).reduce(0) { $0 + max(1, min($1.weight ?? 1, 5)) }
+            project.progress = totalWeight == 0 ? 0 : Double(completedWeight) / Double(totalWeight)
+            return project
+        }
     }
 
     var body: some View {
