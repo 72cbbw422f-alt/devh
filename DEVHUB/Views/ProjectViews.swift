@@ -299,32 +299,42 @@ struct ProjectDetailView: View {
                             .font(.caption).foregroundStyle(StudioTheme.muted)
                     } else {
                         ForEach(storedTasks) { task in
-                            Button { task.isCompleted.toggle() } label: {
-                                HStack(spacing: 11) {
-                                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .font(.title3).foregroundStyle(task.isCompleted ? StudioTheme.accentCyan : StudioTheme.muted)
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(task.title)
-                                            .font(.subheadline)
-                                            .foregroundStyle(task.isCompleted ? StudioTheme.muted : StudioTheme.text)
-                                            .strikethrough(task.isCompleted, color: StudioTheme.muted)
-                                        Text("Vikt \(max(1, min(task.weight ?? 1, 5))) av 5")
-                                            .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
-                                    }
-                                    Spacer()
-                                    Menu {
-                                        ForEach(1...5, id: \.self) { weight in
-                                            Button("Vikt \(weight)") { task.weight = weight }
-                                        }
-                                    } label: {
-                                        Image(systemName: "slider.horizontal.3")
-                                            .font(.caption).foregroundStyle(StudioTheme.muted)
-                                            .padding(8)
-                                    }
+                            HStack(spacing: 11) {
+                                Image(systemName: task.statusSymbol)
+                                    .font(.title3)
+                                    .foregroundStyle(task.statusRawValue == "verified" ? .green : (task.isCompleted ? StudioTheme.accentCyan : StudioTheme.muted))
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(task.title)
+                                        .font(.subheadline)
+                                        .foregroundStyle(task.isCompleted ? StudioTheme.muted : StudioTheme.text)
+                                        .strikethrough(task.isCompleted, color: StudioTheme.muted)
+                                    Text("\(task.statusLabel) · Vikt \(max(1, min(task.weight ?? 1, 5))) av 5")
+                                        .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
                                 }
-                                .contentShape(Rectangle())
+                                Spacer()
+                                Menu {
+                                    Button("Föreslagen") {
+                                        task.statusRawValue = "proposed"
+                                        task.isCompleted = false
+                                    }
+                                    Button("Pågår") {
+                                        task.statusRawValue = "inProgress"
+                                        task.isCompleted = false
+                                    }
+                                    Button("Klar – manuellt") {
+                                        task.statusRawValue = "completed"
+                                        task.isCompleted = true
+                                    }
+                                    Divider()
+                                    ForEach(1...5, id: \.self) { weight in
+                                        Button("Vikt \(weight)") { task.weight = weight }
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                        .font(.caption).foregroundStyle(StudioTheme.muted)
+                                        .padding(8)
+                                }
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                     if !storedMilestones.isEmpty {
