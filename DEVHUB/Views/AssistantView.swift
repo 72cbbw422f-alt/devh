@@ -368,6 +368,26 @@ struct AssistantView: View {
                                 Text("Förhandsvisning – ingen kod har ändrats eller godkänts för incheckning.")
                                     .font(.caption2)
                                     .foregroundStyle(StudioTheme.muted)
+                                if let patchPreview = item.patchPreview, !patchPreview.isEmpty {
+                                    HStack(spacing: 12) {
+                                        if item.patchStatusRawValue == "dispatched" {
+                                            Label("Godkänt · skickat till GitHub", systemImage: "checkmark.circle.fill")
+                                                .font(.caption.weight(.semibold)).foregroundStyle(.green)
+                                        } else {
+                                            Button { approvePatch(for: item) } label: {
+                                                Label("Godkänn och skapa PR", systemImage: "checkmark.shield")
+                                                    .font(.caption.weight(.semibold))
+                                            }
+                                            .tint(StudioTheme.accent)
+                                            .disabled(item.patchStatusRawValue == "dispatching" || item.baseCommitSHA == nil || !patchPreview.contains("--- ") || !patchPreview.contains("+++ "))
+                                            if item.patchStatusRawValue == "dispatching" { ProgressView().controlSize(.small) }
+                                        }
+                                    }
+                                    if item.baseCommitSHA == nil {
+                                        Text("Kan inte godkännas ännu: grundversionen saknas. Uppdatera analysen.")
+                                            .font(.caption2).foregroundStyle(.orange)
+                                    }
+                                }
                             }
                             if let analysis = item.analysisText, !analysis.isEmpty {
                                 Text(analysis)
@@ -651,6 +671,28 @@ struct AssistantView: View {
         }
     }
 
+    private func approvePatch(for item: ByteWorkItem) {
+        guard let token = GitHubTokenStore.read() else { statusMessage = "GitHub-token saknas. Spara den först."; return }
+        guard let baseSHA = item.baseCommitSHA, let patch = item.patchPreview,
+              patch.contains("--- "), patch.contains("+++ ") else {
+            statusMessage = "Kodförslaget saknar en giltig diff eller grundversion."; return
+        }
+        guard item.patchStatusRawValue != "dispatching" && item.patchStatusRawValue != "dispatched" else { return }
+        item.patchStatusRawValue = "dispatching"
+        statusMessage = "Skickar ditt godkända förslag till GitHub…"
+        Task {
+            do {
+                try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, token: token)
+                await MainActor.run {
+                    item.patchStatusRawValue = "dispatched"; item.updatedAt = .now
+                    statusMessage = "Förslaget är godkänt och skickat till GitHub. Där kontrolleras grundversionen och diffen innan en separat branch och PR skapas."
+                    modelContext.insert(DEVHUBNotification(title: "Byte-förslag godkänt", message: "GitHub har tagit emot det godkända förslaget för (item.projectRepository).", category: "assistant"))
+                }
+            } catch {
+                await MainActor.run { item.patchStatusRawValue = "pending"; statusMessage = "Kunde inte skicka godkännandet: (error.localizedDescription)" }
+            }
+        }
+    }
     private func submitTask() {
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
@@ -898,6 +940,23 @@ private enum GitHubWorkflowClient {
         return result
     }
 
+    static func dispatchApprovedPatch(repository: String, baseSHA: String, patch: String, title: String, token: String) async throws {
+        let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/apply-byte-patch.yml/dispatches")!
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("Bearer (token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["ref": "main", "inputs": ["project_repository": repository, "base_sha": baseSHA, "patch": patch, "task_title": String(title.prefix(120))]])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            let detail = String(data: data, encoding: .utf8) ?? ""
+            if http.statusCode == 401 || http.statusCode == 403 { throw WorkflowError.permission }
+            throw WorkflowError.http(http.statusCode, detail)
+        }
+    }
     static func dispatch(repository: String, task: String, workMode: String, previousResponseID: String?, token: String) async throws {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
