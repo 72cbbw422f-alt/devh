@@ -26,6 +26,7 @@ struct AssistantView: View {
     @State private var workflowURL: URL?
     @State private var runStatus: String?
     @State private var analysisText: String?
+    @State private var continuingFromResponseID: String?
     @AppStorage("byte.workMode") private var workMode = "approval"
     @AppStorage("byte.allowAutomaticBuilds") private var allowAutomaticBuilds = true
     @AppStorage("byte.allowAutomaticPullRequests") private var allowAutomaticPullRequests = false
@@ -229,6 +230,20 @@ struct AssistantView: View {
                 }
             }
             .pickerStyle(.menu).tint(StudioTheme.accent)
+            if let continuingFromResponseID {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.turn.down.right")
+                        .foregroundStyle(StudioTheme.accentCyan)
+                    Text("Fortsätter ett befintligt Byte-samtal")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(StudioTheme.accentCyan)
+                    Spacer()
+                    Button("Avsluta") { self.continuingFromResponseID = nil }
+                        .font(.caption)
+                }
+                .padding(10)
+                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
+            }
             TextField(
                 "Vad vill du att AI:n ska undersöka?",
                 text: $task,
@@ -357,6 +372,20 @@ struct AssistantView: View {
                                     .foregroundStyle(StudioTheme.muted)
                             }
                             HStack(spacing: 14) {
+                                if let responseID = item.conversationResponseID {
+                                    Button {
+                                        selectedRepository = item.projectRepository
+                                        workMode = "collaborate"
+                                        continuingFromResponseID = responseID
+                                        task = ""
+                                        focusedField = .task
+                                        statusMessage = "Du fortsätter nu samtalet med Byte från det här uppdraget."
+                                    } label: {
+                                        Label("Fortsätt samtal", systemImage: "bubble.left.and.bubble.right")
+                                            .font(.caption.weight(.semibold))
+                                    }
+                                    .tint(StudioTheme.accent)
+                                }
                                 if let rawURL = item.workflowURL, let url = URL(string: rawURL) {
                                     Link("Öppna körning", destination: url)
                                         .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
@@ -545,7 +574,9 @@ struct AssistantView: View {
         let prompt = task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
         focusedField = nil
+        let previousResponseID = workMode == "collaborate" ? continuingFromResponseID : nil
         let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt, workMode: workMode)
+        queueItem.conversationResponseID = previousResponseID
         modelContext.insert(queueItem)
         let queueItemID = queueItem.id
         isSending = true
@@ -556,7 +587,7 @@ struct AssistantView: View {
         let startedAt = Date()
         Task {
             do {
-                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: workMode, token: token)
+                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: workMode, previousResponseID: previousResponseID, token: token)
                 await MainActor.run {
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                         item.statusRawValue = "running"
@@ -564,6 +595,7 @@ struct AssistantView: View {
                     }
                     statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"
                     task = ""
+                    continuingFromResponseID = nil
                 }
                 let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, token: token) { runID, runURL in
                     await MainActor.run {
@@ -595,10 +627,13 @@ struct AssistantView: View {
                 if result.message.contains("lyckades") {
                     do {
                         let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
+                        let responseID = text.components(separatedBy: "<!-- DEVHUB_RESPONSE_ID:").dropFirst().first?.components(separatedBy: " -->").first
+                        let cleanText = text.replacingOccurrences(of: #"<\\!-- DEVHUB_RESPONSE_ID:[^>]+ -->"#, with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
                         await MainActor.run {
-                            analysisText = text
+                            analysisText = cleanText
                             if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
-                                item.analysisText = text
+                                item.analysisText = cleanText
+                                item.conversationResponseID = responseID
                                 item.updatedAt = .now
                             }
                             statusMessage = nil
@@ -775,7 +810,7 @@ private enum GitHubWorkflowClient {
         return result
     }
 
-    static func dispatch(repository: String, task: String, workMode: String, token: String) async throws {
+    static func dispatch(repository: String, task: String, workMode: String, previousResponseID: String?, token: String) async throws {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -785,7 +820,7 @@ private enum GitHubWorkflowClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "ref": "main",
-            "inputs": ["project_repository": repository, "task": task, "work_mode": workMode]
+            "inputs": ["project_repository": repository, "task": task, "work_mode": workMode, "previous_response_id": previousResponseID ?? ""]
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }
