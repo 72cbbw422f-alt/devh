@@ -69,11 +69,18 @@ private struct CachedGitHubRepository: Sendable {
 
 private actor GitHubRepositoryCache {
     static let shared = GitHubRepositoryCache()
+
     private struct Entry {
         let value: CachedGitHubRepository
         let savedAt: Date
     }
+    private struct WorkflowEntry {
+        let value: GitHubWorkflowRunSnapshot?
+        let savedAt: Date
+    }
+
     private var entries: [String: Entry] = [:]
+    private var workflowEntries: [String: WorkflowEntry] = [:]
     private let lifetime: TimeInterval = 300
 
     func value(for key: String) -> CachedGitHubRepository? {
@@ -88,25 +95,33 @@ private actor GitHubRepositoryCache {
     func store(_ value: CachedGitHubRepository, for key: String) {
         entries[key] = Entry(value: value, savedAt: Date())
     }
+
+    func workflowValue(for key: String) -> GitHubWorkflowRunSnapshot?? {
+        guard let entry = workflowEntries[key],
+              Date().timeIntervalSince(entry.savedAt) < lifetime else {
+            workflowEntries.removeValue(forKey: key)
+            return nil
+        }
+        return .some(entry.value)
+    }
+
+    func storeWorkflow(_ value: GitHubWorkflowRunSnapshot?, for key: String) {
+        workflowEntries[key] = WorkflowEntry(value: value, savedAt: Date())
+    }
 }
 
 struct GitHubRepositoryService {
     func fetchSnapshot(repository: String) async throws -> (GitHubRepositorySnapshot, GitHubCommitSnapshot?) {
-        let path = normalizedPath(repository)
-        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
-        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy(allowed.contains) }) else {
-            throw GitHubRepositoryError.invalidRepository
-        }
+        let path = try validatedPath(repository)
 
         if let cached = await GitHubRepositoryCache.shared.value(for: path) {
             return (cached.snapshot, cached.latestCommit)
         }
 
-        let repoURL = URL(string: "https://api.github.com/repos/\(path)")!
+        let repoURL = URL(string: "https://api.github.com/repos/\\(path)")!
         let snapshot: GitHubRepositorySnapshot = try await request(repoURL)
 
-        let commitsURL = URL(string: "https://api.github.com/repos/\(path)/commits?per_page=1")!
+        let commitsURL = URL(string: "https://api.github.com/repos/\\(path)/commits?per_page=1")!
         let commits: [GitHubCommitSnapshot]? = try? await request(commitsURL)
         let result = CachedGitHubRepository(snapshot: snapshot, latestCommit: commits?.first)
         await GitHubRepositoryCache.shared.store(result, for: path)
@@ -114,15 +129,16 @@ struct GitHubRepositoryService {
     }
 
     func fetchLatestWorkflowRun(repository: String) async throws -> GitHubWorkflowRunSnapshot? {
-        let path = normalizedPath(repository)
-        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
-        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy(allowed.contains) }) else {
-            throw GitHubRepositoryError.invalidRepository
+        let path = try validatedPath(repository)
+        if let cached = await GitHubRepositoryCache.shared.workflowValue(for: path) {
+            return cached
         }
-        let url = URL(string: "https://api.github.com/repos/\(path)/actions/runs?per_page=1")!
+
+        let url = URL(string: "https://api.github.com/repos/\\(path)/actions/runs?per_page=1")!
         let response: WorkflowRunsResponse = try await request(url)
-        return response.workflowRuns.first
+        let latest = response.workflowRuns.first
+        await GitHubRepositoryCache.shared.storeWorkflow(latest, for: path)
+        return latest
     }
 
     private struct WorkflowRunsResponse: Decodable {
@@ -132,13 +148,24 @@ struct GitHubRepositoryService {
         }
     }
 
+    private func validatedPath(_ repository: String) throws -> String {
+        let path = normalizedPath(repository)
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        guard parts.count == 2,
+              parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy(allowed.contains) }) else {
+            throw GitHubRepositoryError.invalidRepository
+        }
+        return path
+    }
+
     private func normalizedPath(_ repository: String) -> String {
         var value = repository.trimmingCharacters(in: .whitespacesAndNewlines)
         value = value.replacingOccurrences(of: "https://github.com/", with: "")
         value = value.replacingOccurrences(of: "http://github.com/", with: "")
         if value.hasSuffix(".git") { value.removeLast(4) }
         value = value.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if !value.contains("/") { value = "72cbbw422f-alt/\(value)" }
+        if !value.contains("/") { value = "72cbbw422f-alt/\\(value)" }
         return value
     }
 
