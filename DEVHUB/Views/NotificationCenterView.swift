@@ -2,8 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct NotificationCenterView: View {
-    @Environment(\\.modelContext) private var modelContext
-    @Query(sort: \\DEVHUBNotification.createdAt, order: .reverse) private var notifications: [DEVHUBNotification]
+    @Query(sort: \DEVHUBNotification.createdAt, order: .reverse) private var notifications: [DEVHUBNotification]
 
     private var unreadCount: Int { notifications.filter { !$0.isRead }.count }
 
@@ -13,7 +12,7 @@ struct NotificationCenterView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Notiser").font(.largeTitle.bold()).foregroundStyle(StudioTheme.text)
-                        Text(unreadCount == 0 ? "Du är helt uppdaterad." : "\\(unreadCount) olästa notiser")
+                        Text(unreadCount == 0 ? "Du är helt uppdaterad." : "\(unreadCount) olästa notiser")
                             .font(.subheadline).foregroundStyle(StudioTheme.muted)
                     }
                     Spacer()
