@@ -479,6 +479,15 @@ struct AssistantView: View {
                                 }
                                 .font(.caption.weight(.semibold))
                                 .tint(StudioTheme.accentCyan)
+                                if analysis.contains("DEVHUB_TASKS_BEGIN") {
+                                    Button {
+                                        importByteTaskProposals(from: analysis, repository: item.projectRepository)
+                                    } label: {
+                                        Label("Importera Bytes uppgifter", systemImage: "checklist")
+                                            .font(.caption.weight(.semibold))
+                                    }
+                                    .tint(StudioTheme.accentCyan)
+                                }
                             } else if item.statusRawValue == "completed" {
                                 Text("Analysen är klar. Resultatet hämtas…")
                                     .font(.caption)
@@ -842,7 +851,7 @@ struct AssistantView: View {
         }
     }
 
-    private func importByteTaskProposals(from analysis: String) {
+    private func importByteTaskProposals(from analysis: String, repository: String? = nil) {
         guard let start = analysis.range(of: "<!-- DEVHUB_TASKS_BEGIN -->"),
               let end = analysis.range(of: "<!-- DEVHUB_TASKS_END -->"),
               start.upperBound <= end.lowerBound else {
@@ -855,7 +864,8 @@ struct AssistantView: View {
             statusMessage = "Bytes uppgiftsförslag kunde inte läsas."
             return
         }
-        let repo = analysisRepository.split(separator: "/").last.map(String.init) ?? analysisRepository
+        let sourceRepository = repository ?? analysisRepository
+        let repo = sourceRepository.split(separator: "/").last.map(String.init) ?? sourceRepository
         let projectID: String
         switch repo {
         case "fam": projectID = "familjen"
