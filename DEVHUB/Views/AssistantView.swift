@@ -1076,22 +1076,22 @@ private enum GitHubWorkflowClient {
         let slugBase = title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
             .lowercased()
         let asciiSlug = String(slugBase.map { character -> Character in
-            character.isASCII && character.isLetter || character.isASCII && character.isNumber ? character : "-"
+            character.unicodeScalars.allSatisfy { $0.isASCII } && (character.isLetter || character.isNumber) ? character : "-"
         })
         let slug = String(asciiSlug.split(separator: "-", omittingEmptySubsequences: true).joined(separator: "-").prefix(32))
-        let branch = "byte/approved-\\(runID)-\\(slug.isEmpty ? "change" : slug)"
+        let branch = "byte/approved-\(runID)-\(slug.isEmpty ? "change" : slug)"
         let components = repository.split(separator: "/")
         guard components.count == 2 else { return nil }
-        var urlComponents = URLComponents(string: "https://api.github.com/repos/\\(repository)/pulls")!
+        var urlComponents = URLComponents(string: "https://api.github.com/repos/\(repository)/pulls")!
         urlComponents.queryItems = [
             URLQueryItem(name: "state", value: "all"),
-            URLQueryItem(name: "head", value: "\\(components[0]):\\(branch)"),
+            URLQueryItem(name: "head", value: "\(components[0]):\(branch)"),
             URLQueryItem(name: "per_page", value: "1")
         ]
         guard let url = urlComponents.url else { return nil }
         for _ in 0..<5 {
             var request = URLRequest(url: url)
-            request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
             request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
             guard let (data, response) = try? await URLSession.shared.data(for: request),
