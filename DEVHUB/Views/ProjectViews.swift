@@ -193,12 +193,12 @@ struct ProjectDetailView: View {
 
     private var suggestedTasks: [String] {
         switch project.id {
-        case "familjen": ["Färdigställ kalenderflödet", "Verifiera delade listor", "Testa inbjudningsflödet"]
-        case "watchlist": ["Förfina progress-listan", "Kontrollera metadataimport", "Testa statusfilter"]
-        case "antikspanaren": ["Kartlägg källornas API:er", "Normalisera objektsdata", "Planera bevakningsmotor"]
-        case "regnvakt": ["Felsök varningsmatchning", "Verifiera radarens tidsstämplar", "Testa notiser i bakgrunden"]
-        case "hemma": ["Verifiera HomeKit-entitlements", "Bygg grundläggande rumsvy", "Testa tillbehörsstatus"]
-        default: ["Färdigställ projektdetaljer", "Koppla GitHub-status", "Dokumentera bygg- och releaseflödet"]
+        case "familjen": ["Bygg grundstruktur och navigering", "Färdigställ familjekalendern", "Verifiera delade listor", "Testa inbjudan och synkronisering"]
+        case "watchlist": ["Bygg bibliotekets grund", "Färdigställ progress-listan", "Verifiera TMDB och metadata", "Testa import och synkronisering"]
+        case "antikspanaren": ["Bygg datamodell och sök", "Integrera auktionskällor", "Skapa bevakningar", "Verifiera pris- och objekthistorik"]
+        case "regnvakt": ["Färdigställ väderöversikten", "Verifiera SMHI-varningar", "Stabilisera radar och kartlager", "Testa bakgrundsnotiser"]
+        case "hemma": ["Bygg appskal och rum", "Verifiera HomeKit-anslutning", "Visa tillbehör och scener", "Testa automationer"]
+        default: ["Färdigställ projektöversikt och AI", "Verifiera GitHub-arbetsflöde", "Bygg milstolpar och uppgifter", "Verifiera byggstatus och distribution"]
         }
     }
 
