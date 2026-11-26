@@ -31,12 +31,6 @@ struct AnalyticsView: View {
         return projects.reduce(0) { $0 + $1.progress } / Double(projects.count)
     }
 
-    private var statusCounts: [(ProjectStatus, Int)] {
-        ProjectStatus.allCases.map { status in
-            (status, projects.filter { $0.status == status }.count)
-        }
-    }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
@@ -139,7 +133,8 @@ struct AnalyticsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(eyebrow: "FÖRDELNING", title: "Projektstatus")
             VStack(spacing: 13) {
-                ForEach(statusCounts, id: \\.0.id) { status, count in
+                ForEach(ProjectStatus.allCases) { status in
+                    let count = projects.filter { $0.status == status }.count
                     HStack(spacing: 10) {
                         Text(status.rawValue)
                             .font(.subheadline.weight(.medium))
