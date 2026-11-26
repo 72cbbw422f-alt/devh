@@ -20,6 +20,8 @@ final class ByteWorkItem {
     var patchPreview: String?
     var baseCommitSHA: String?
     var patchStatusRawValue: String = "pending"
+    var patchWorkflowRunID: Int?
+    var patchWorkflowURL: String?
 
     var workModeLabel: String {
         switch workModeRawValue {
@@ -52,5 +54,7 @@ final class ByteWorkItem {
         conversationResponseID = nil
         baseCommitSHA = nil
         patchStatusRawValue = "pending"
+        patchWorkflowRunID = nil
+        patchWorkflowURL = nil
     }
 }
