@@ -71,7 +71,7 @@ struct AnalyticsView: View {
 
     private var overviewMetrics: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            metricCard(value: "\(projects.count)", label: "AKTIVA PROJEKT", symbol: "square.stack.3d.up")
+            metricCard(value: "\(projects.count)", label: "PROJEKT", symbol: "square.stack.3d.up")
             metricCard(value: "\(Int(averagePlannedProgress * 100))%", label: "PLANERAT SNITT", symbol: "chart.pie")
             metricCard(value: "\(tasks.count)", label: "SPARADE UPPGIFTER", symbol: "checklist")
             metricCard(value: "\(completedTasks)", label: "AVKLARADE", symbol: "checkmark.circle")
