@@ -25,7 +25,11 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - [x] Initial six-project portfolio
 - [x] Overview hero, project count and average planned progress
 - [x] Premium project cards with status and progress indicators
-- [x] Project list and project detail screens\n- [x] Create custom projects with name, description, platform, category, status, accent color and optional GitHub repository\n- [x] Edit existing project metadata\n- [x] Archive and restore projects without deleting their data\n- [x] Persist project records and task checklists locally with SwiftData
+- [x] Project list and project detail screens
+- [x] Create custom projects with name, description, platform, category, status, accent color and optional GitHub repository
+- [x] Edit existing project metadata
+- [x] Archive and restore projects without deleting their data
+- [x] Persist project records and task checklists locally with SwiftData
 - [x] Per-project milestone roadmap and interactive task checklist (task completion and custom tasks persisted locally with SwiftData)
 - [x] GitHub repository deep links
 - [x] Native AI assistant workspace UI
