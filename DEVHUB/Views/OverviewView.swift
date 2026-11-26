@@ -38,7 +38,7 @@ struct OverviewView: View {
                     }
                 }
                 SectionHeading(eyebrow: "SENASTE", title: "Senaste aktivitet")
-                IntegrationEmptyState()
+                GitHubActivityFeedView(projects: projects)
             }
             .padding(18)
             .frame(maxWidth: 900)
