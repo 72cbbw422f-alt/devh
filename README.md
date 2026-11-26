@@ -34,6 +34,7 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - [x] GitHub repository deep links
 - [x] Read-only GitHub API client for public repository metadata and latest commit
 - [x] Live repository status on project detail pages, including issues, stars, forks, default branch and latest push
+- [x] Five-minute in-memory cache for public repository metadata and latest commit to reduce API calls and rate-limit pressure
 - [x] Native AI assistant workspace UI
 - [x] GitHub Actions unsigned IPA build workflow
 - [x] Serverless GitHub Actions workflow for read-only AI project analysis
@@ -65,7 +66,7 @@ The initial AI workflow is read-only. Later code-writing support will use a sepa
 
 ## Roadmap
 1. Persistent milestone editing and optional iCloud synchronization.
-2. Shared GitHub client and live repository status, commits, branches, PRs, issues, releases and CI.
+2. Expand the GitHub integration into a shared studio activity feed with commits, pull requests, issues, releases and CI.
 3. Connect roadmap and project health to real repository signals.
 4. Approved code changes on isolated branches with pull requests.
 5. Studio analytics and optional financial integrations.
