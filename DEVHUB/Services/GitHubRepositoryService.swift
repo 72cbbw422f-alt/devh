@@ -1,6 +1,6 @@
 import Foundation
 
-struct GitHubRepositorySnapshot: Decodable {
+struct GitHubRepositorySnapshot: Decodable, Sendable {
     let fullName: String
     let htmlURL: URL
     let defaultBranch: String
@@ -20,8 +20,8 @@ struct GitHubRepositorySnapshot: Decodable {
     }
 }
 
-struct GitHubCommitSnapshot: Decodable {
-    struct Commit: Decodable {
+struct GitHubCommitSnapshot: Decodable, Sendable {
+    struct Commit: Decodable, Sendable {
         let message: String
     }
     let htmlURL: URL
@@ -49,6 +49,34 @@ enum GitHubRepositoryError: LocalizedError {
     }
 }
 
+private struct CachedGitHubRepository: Sendable {
+    let snapshot: GitHubRepositorySnapshot
+    let latestCommit: GitHubCommitSnapshot?
+}
+
+private actor GitHubRepositoryCache {
+    static let shared = GitHubRepositoryCache()
+    private struct Entry {
+        let value: CachedGitHubRepository
+        let savedAt: Date
+    }
+    private var entries: [String: Entry] = [:]
+    private let lifetime: TimeInterval = 300
+
+    func value(for key: String) -> CachedGitHubRepository? {
+        guard let entry = entries[key],
+              Date().timeIntervalSince(entry.savedAt) < lifetime else {
+            entries.removeValue(forKey: key)
+            return nil
+        }
+        return entry.value
+    }
+
+    func store(_ value: CachedGitHubRepository, for key: String) {
+        entries[key] = Entry(value: value, savedAt: Date())
+    }
+}
+
 struct GitHubRepositoryService {
     func fetchSnapshot(repository: String) async throws -> (GitHubRepositorySnapshot, GitHubCommitSnapshot?) {
         let path = normalizedPath(repository)
@@ -58,12 +86,18 @@ struct GitHubRepositoryService {
             throw GitHubRepositoryError.invalidRepository
         }
 
+        if let cached = await GitHubRepositoryCache.shared.value(for: path) {
+            return (cached.snapshot, cached.latestCommit)
+        }
+
         let repoURL = URL(string: "https://api.github.com/repos/\(path)")!
         let snapshot: GitHubRepositorySnapshot = try await request(repoURL)
 
         let commitsURL = URL(string: "https://api.github.com/repos/\(path)/commits?per_page=1")!
         let commits: [GitHubCommitSnapshot]? = try? await request(commitsURL)
-        return (snapshot, commits?.first)
+        let result = CachedGitHubRepository(snapshot: snapshot, latestCommit: commits?.first)
+        await GitHubRepositoryCache.shared.store(result, for: path)
+        return (result.snapshot, result.latestCommit)
     }
 
     private func normalizedPath(_ repository: String) -> String {
