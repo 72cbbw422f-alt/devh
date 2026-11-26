@@ -32,6 +32,7 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Query(sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
     @Query private var storedTasks: [ProjectTaskItem]
+    @Query private var storedMilestones: [ProjectMilestoneItem]
     @State private var selection: StudioTab = .overview
     @State private var selectedProject: StudioProject?
     @State private var showingAddProject = false
@@ -189,14 +190,64 @@ struct ContentView: View {
             for project in StudioProject.samples {
                 modelContext.insert(StudioProjectRecord(project: project))
             }
-            return
+        } else if !storedProjects.contains(where: { $0.id == "watchlist" }),
+                  let watchlist = StudioProject.samples.first(where: { $0.id == "watchlist" }) {
+            modelContext.insert(StudioProjectRecord(project: watchlist))
         }
 
-        // Restore Watchlist if an earlier app build removed its local seed.
-        if !storedProjects.contains(where: { $0.id == "watchlist" }) {
-            if let watchlist = StudioProject.samples.first(where: { $0.id == "watchlist" }) {
-                modelContext.insert(StudioProjectRecord(project: watchlist))
+        // Seed every project's tracking data up front so overview percentages
+        // are meaningful before the user opens each project detail screen.
+        let projectsToSeed = StudioProject.samples + storedProjects.map(\\.project)
+        var seenProjectIDs = Set<String>()
+        for project in projectsToSeed where seenProjectIDs.insert(project.id).inserted {
+            let milestones = storedMilestones.filter { $0.projectID == project.id }
+            var milestoneRecords = milestones.sorted { $0.sortOrder < $1.sortOrder }
+            if milestoneRecords.isEmpty {
+                for (index, title) in milestoneTitles(for: project.id).enumerated() {
+                    let item = ProjectMilestoneItem(projectID: project.id, title: title, sortOrder: index)
+                    modelContext.insert(item)
+                    milestoneRecords.append(item)
+                }
             }
+
+            let tasks = storedTasks.filter { $0.projectID == project.id }
+            if tasks.isEmpty {
+                for (index, title) in taskTitles(for: project.id).enumerated() where index < milestoneRecords.count {
+                    modelContext.insert(ProjectTaskItem(
+                        projectID: project.id,
+                        title: title,
+                        weight: index == 0 ? 3 : 2,
+                        milestoneID: milestoneRecords[index].id
+                    ))
+                }
+            } else {
+                for (index, task) in tasks.filter({ $0.milestoneID == nil }).enumerated()
+                    where index < milestoneRecords.count {
+                    task.milestoneID = milestoneRecords[index].id
+                }
+            }
+        }
+    }
+
+    private func milestoneTitles(for projectID: String) -> [String] {
+        switch projectID {
+        case "familjen": ["Grundstruktur och navigering", "Familjekalender", "Delade inköpslistor", "Inbjudan och synkronisering"]
+        case "watchlist": ["Grundläggande bibliotek", "Progress-lista", "TMDB och metadata", "Import och synkronisering"]
+        case "antikspanaren": ["Datamodell och sök", "Auktionskällor", "Bevakningar", "Pris- och objekthistorik"]
+        case "regnvakt": ["Väderöversikt", "SMHI-varningar", "Radar och kartlager", "Bakgrundsnotiser"]
+        case "hemma": ["Appskal och rum", "HomeKit-anslutning", "Tillbehör och scener", "Automationer"]
+        default: ["Projektöversikt och AI", "GitHub-arbetsflöde", "Milstolpar och uppgifter", "Byggstatus och distribution"]
+        }
+    }
+
+    private func taskTitles(for projectID: String) -> [String] {
+        switch projectID {
+        case "familjen": ["Bygg grundstruktur och navigering", "Färdigställ familjekalendern", "Verifiera delade listor", "Testa inbjudan och synkronisering"]
+        case "watchlist": ["Bygg bibliotekets grund", "Färdigställ progress-listan", "Verifiera TMDB och metadata", "Testa import och synkronisering"]
+        case "antikspanaren": ["Bygg datamodell och sök", "Integrera auktionskällor", "Skapa bevakningar", "Verifiera pris- och objekthistorik"]
+        case "regnvakt": ["Färdigställ väderöversikten", "Verifiera SMHI-varningar", "Stabilisera radar och kartlager", "Testa bakgrundsnotiser"]
+        case "hemma": ["Bygg appskal och rum", "Verifiera HomeKit-anslutning", "Visa tillbehör och scener", "Testa automationer"]
+        default: ["Färdigställ projektöversikt och AI", "Verifiera GitHub-arbetsflöde", "Bygg milstolpar och uppgifter", "Verifiera byggstatus och distribution"]
         }
     }
 }
