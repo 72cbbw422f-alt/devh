@@ -13,6 +13,7 @@ final class ProjectTaskItem {
     var createdAt: Date
 
     var statusLabel: String {
+        if statusRawValue == nil && isCompleted { return "Klar" }
         switch statusRawValue {
         case "inProgress": "Pågår"
         case "verified": "Verifierat klar"
@@ -22,6 +23,7 @@ final class ProjectTaskItem {
     }
 
     var statusSymbol: String {
+        if statusRawValue == nil && isCompleted { return "checkmark.circle.fill" }
         switch statusRawValue {
         case "inProgress": "arrow.triangle.2.circlepath"
         case "verified": "checkmark.seal.fill"
