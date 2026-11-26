@@ -60,6 +60,10 @@ jobs:
               json.dump(snapshot, f, indent=2)
           PY
       - name: Publish snapshot to data branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push snapshot to data branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
