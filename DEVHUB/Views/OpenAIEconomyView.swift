@@ -1,88 +1,51 @@
 import SwiftUI
+import Charts
 
 struct OpenAIEconomyView: View {
     @State private var snapshot: OpenAICostSnapshot?
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var lastUpdated: String?
+    @State private var lastFetchAt: Date?
+    @AppStorage("openAI.monthlyBudgetUSD") private var monthlyBudgetUSD = 25.0
 
     private let billingURL = URL(string: "https://platform.openai.com/settings/organization/billing/overview")!
+
+    private var budgetProgress: Double {
+        guard monthlyBudgetUSD > 0, let snapshot else { return 0 }
+        return min(snapshot.monthToDateUSD / monthlyBudgetUSD, 1)
+    }
+
+    private var budgetWarning: Bool {
+        snapshot != nil && monthlyBudgetUSD > 0 && snapshot!.monthToDateUSD >= monthlyBudgetUSD * 0.8
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Label("OPENAI · API-KOSTNADER", systemImage: "chart.xyaxis.line")
-                        .font(.caption.bold()).foregroundStyle(StudioTheme.accent)
-                    Text("AI-ekonomi")
-                        .font(.system(size: 29, weight: .bold, design: .rounded))
-                        .foregroundStyle(StudioTheme.text)
-                    Text("Förbrukning och kostnader för din OpenAI-organisation.")
-                        .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
-                }
-
+                header
                 if let snapshot {
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text("Förbrukning denna månad").font(.caption).foregroundStyle(StudioTheme.secondaryText)
-                        Text(snapshot.monthToDateUSD, format: .currency(code: "USD"))
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                            .foregroundStyle(StudioTheme.text)
-                        Text("Sedan \(snapshot.monthStart)")
-                            .font(.caption).foregroundStyle(StudioTheme.muted)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(18)
-                    .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(StudioTheme.border, lineWidth: 1))
-
-                    sectionCard(title: "Kostnad per projekt", subtitle: "Hämtat från OpenAI") {
-                        if snapshot.projects.isEmpty {
-                            Text("Ingen debiterad API-förbrukning registrerad denna månad.")
-                                .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
-                        } else {
-                            ForEach(snapshot.projects) { item in
-                                costRow(item.projectID, value: item.costUSD)
-                            }
-                        }
-                    }
-
-                    sectionCard(title: "Kostnadsposter", subtitle: "Fördelning enligt OpenAI") {
-                        if snapshot.lineItems.isEmpty {
-                            Text("Inga kostnadsposter ännu.")
-                                .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
-                        } else {
-                            ForEach(snapshot.lineItems) { item in
-                                costRow(item.name, value: item.costUSD)
-                            }
-                        }
-                    }
-
-                    if !snapshot.daily.isEmpty {
-                        sectionCard(title: "Daglig förbrukning", subtitle: "USD per dag") {
-                            ForEach(snapshot.daily.suffix(10)) { item in
-                                costRow(item.date, value: item.costUSD)
-                            }
-                        }
-                    }
-                    Text("Senast uppdaterad: \(snapshot.updatedAt)")
-                        .font(.caption2).foregroundStyle(StudioTheme.muted)
+                    monthSummary(snapshot)
+                    budgetCard(snapshot)
+                    dailyChart(snapshot)
+                    projectSection(snapshot)
+                    lineItemSection(snapshot)
+                    updateMetadata(snapshot)
                 } else if isLoading {
                     ProgressView("Hämtar OpenAI-kostnader…")
                         .frame(maxWidth: .infinity).padding(30)
                 } else {
-                    sectionCard(title: "Ingen kostnadsdata ännu", subtitle: "Anslut OpenAI för att börja") {
-                        Text(errorMessage ?? "När administratörsnyckeln är konfigurerad visas kostnader här.")
+                    sectionCard(title: "Ingen kostnadsdata ännu", subtitle: "OpenAI API-rapport") {
+                        Text(errorMessage ?? "Kostnadsrapporten visas här när den har hämtats.")
                             .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
                     }
                 }
 
-                sectionCard(title: "Kreditsaldo", subtitle: "Hanteras separat av OpenAI") {
-                    Text("OpenAI erbjuder ingen publik API-endpoint för att läsa återstående förbetalda krediter. Därför visar vi inte ett uppskattat saldo här.")
+                sectionCard(title: "ChatGPT och API är separata", subtitle: "Viktigt om kostnaderna") {
+                    Text("Den här rapporten visar endast API-förbrukning från OpenAI Platform. Din ChatGPT-prenumeration ingår inte och debiteras separat.")
                         .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
                     Link(destination: billingURL) {
                         Label("Öppna OpenAI Billing", systemImage: "arrow.up.right.square")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(StudioTheme.accent)
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.accent)
                     }
                 }
 
@@ -100,14 +63,158 @@ struct OpenAIEconomyView: View {
                     .foregroundStyle(.white)
                 }
                 .disabled(isLoading)
+                if let errorMessage, snapshot != nil {
+                    Text(errorMessage).font(.caption).foregroundStyle(.orange)
+                }
             }
             .padding(18)
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .background(StudioTheme.background.ignoresSafeArea())
-        .navigationTitle("Ekonomi")
+        .navigationTitle("AI-ekonomi")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await loadSnapshot() }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label("OPENAI · API-KOSTNADER", systemImage: "chart.xyaxis.line")
+                .font(.caption.bold()).foregroundStyle(StudioTheme.accent)
+            Text("AI-ekonomi")
+                .font(.system(size: 29, weight: .bold, design: .rounded))
+                .foregroundStyle(StudioTheme.text)
+            Text("Följ förbrukning, projektkostnader och din egen månadsbudget.")
+                .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
+        }
+    }
+
+    private func monthSummary(_ snapshot: OpenAICostSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("FÖRBRUKNING DENNA MÅNAD")
+                .font(.caption.bold()).tracking(0.8).foregroundStyle(StudioTheme.secondaryText)
+            Text(snapshot.monthToDateUSD, format: .currency(code: snapshot.currency))
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(StudioTheme.text)
+            HStack {
+                Label("Sedan \(snapshot.monthStart)", systemImage: "calendar")
+                Spacer()
+                Text("USD").font(.caption.bold())
+            }
+            .font(.caption).foregroundStyle(StudioTheme.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
+        .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+    }
+
+    private func budgetCard(_ snapshot: OpenAICostSnapshot) -> some View {
+        sectionCard(title: "Månadsbudget", subtitle: "Lokal budget i USD · ändras bara på den här enheten") {
+            HStack(alignment: .firstTextBaseline) {
+                Text(snapshot.monthToDateUSD, format: .currency(code: snapshot.currency))
+                    .font(.title2.bold().monospacedDigit()).foregroundStyle(StudioTheme.text)
+                Spacer()
+                Text("av")
+                    .font(.caption).foregroundStyle(StudioTheme.muted)
+                Text(monthlyBudgetUSD, format: .currency(code: "USD"))
+                    .font(.headline.monospacedDigit()).foregroundStyle(StudioTheme.secondaryText)
+            }
+            ProgressView(value: budgetProgress)
+                .tint(budgetWarning ? .orange : StudioTheme.accentCyan)
+            HStack {
+                Text("\(Int((snapshot.monthToDateUSD / max(monthlyBudgetUSD, 0.01)) * 100))% av budgeten")
+                Spacer()
+                if budgetWarning {
+                    Label("Budgetvarning", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                } else {
+                    Text("Under budget").foregroundStyle(StudioTheme.accentCyan)
+                }
+            }
+            .font(.caption.weight(.medium)).foregroundStyle(StudioTheme.secondaryText)
+            HStack {
+                Text("Budget")
+                    .font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                Spacer()
+                Text(monthlyBudgetUSD, format: .currency(code: "USD"))
+                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(StudioTheme.text)
+            }
+            Slider(value: $monthlyBudgetUSD, in: 1...500, step: 1)
+                .tint(StudioTheme.accent)
+            Text("Dra reglaget för att ändra månadsbudgeten (1–500 USD). Varning visas vid 80%.")
+                .font(.caption2).foregroundStyle(StudioTheme.muted)
+        }
+    }
+
+    private func dailyChart(_ snapshot: OpenAICostSnapshot) -> some View {
+        sectionCard(title: "Daglig förbrukning", subtitle: "USD per dag · aktuell månad") {
+            if snapshot.daily.isEmpty {
+                Text("Daglig statistik saknas i rapporten.")
+                    .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
+            } else {
+                Chart(snapshot.daily) { item in
+                    BarMark(
+                        x: .value("Datum", chartDate(item.date)),
+                        y: .value("Kostnad", item.costUSD)
+                    )
+                    .foregroundStyle(StudioTheme.accent.gradient)
+                    .cornerRadius(3)
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 5)) { value in
+                        AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                            .foregroundStyle(StudioTheme.muted)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisGridLine().foregroundStyle(StudioTheme.border)
+                        AxisValueLabel().foregroundStyle(StudioTheme.muted)
+                    }
+                }
+                .frame(height: 170)
+            }
+        }
+    }
+
+    private func projectSection(_ snapshot: OpenAICostSnapshot) -> some View {
+        sectionCard(title: "Kostnad per projekt", subtitle: "Fördelning från OpenAI") {
+            if snapshot.projects.isEmpty {
+                Text("Ingen debiterad API-förbrukning per projekt ännu.")
+                    .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
+            } else {
+                ForEach(snapshot.projects) { item in
+                    costRow(projectLabel(item.projectID), value: item.costUSD, currency: snapshot.currency)
+                }
+            }
+        }
+    }
+
+    private func lineItemSection(_ snapshot: OpenAICostSnapshot) -> some View {
+        sectionCard(title: "Kostnadsposter", subtitle: "Modell och typ av tokenförbrukning") {
+            if snapshot.lineItems.isEmpty {
+                Text("Inga kostnadsposter ännu.")
+                    .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
+            } else {
+                ForEach(snapshot.lineItems) { item in
+                    costRow(item.name, value: item.costUSD, currency: snapshot.currency)
+                }
+            }
+        }
+    }
+
+    private func updateMetadata(_ snapshot: OpenAICostSnapshot) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: "clock").foregroundStyle(StudioTheme.accentCyan)
+            Text("Rapport uppdaterad \(formattedTimestamp(snapshot.updatedAt))")
+            Spacer(minLength: 4)
+            if let lastFetchAt {
+                Text("Läst \(lastFetchAt.formatted(date: .omitted, time: .shortened))")
+            }
+        }
+        .font(.caption2).foregroundStyle(StudioTheme.muted)
     }
 
     private func sectionCard<Content: View>(title: String, subtitle: String, @ViewBuilder content: () -> Content) -> some View {
@@ -123,14 +230,33 @@ struct OpenAIEconomyView: View {
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
     }
 
-    private func costRow(_ title: String, value: Double) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.subheadline).foregroundStyle(StudioTheme.secondaryText).lineLimit(2)
-            Spacer(minLength: 12)
-            Text(value, format: .currency(code: "USD"))
+    private func costRow(_ title: String, value: Double, currency: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(title).font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Text(value, format: .currency(code: currency))
                 .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(StudioTheme.text)
         }
+    }
+
+    private func projectLabel(_ id: String) -> String {
+        if id == "unassigned" { return "Ej kopplat till projekt" }
+        return "Projekt · " + String(id.suffix(8))
+    }
+
+    private func chartDate(_ value: String) -> Date {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: value) ?? .now
+    }
+
+    private func formattedTimestamp(_ value: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: value) else { return value }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     @MainActor
@@ -147,6 +273,7 @@ struct OpenAIEconomyView: View {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
             request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                 throw URLError(.cannotParseResponse)
@@ -156,9 +283,10 @@ struct OpenAIEconomyView: View {
             let encoded = file.content.replacingOccurrences(of: "\n", with: "")
             guard let jsonData = Data(base64Encoded: encoded) else { throw URLError(.cannotDecodeContentData) }
             snapshot = try JSONDecoder().decode(OpenAICostSnapshot.self, from: jsonData)
+            lastFetchAt = .now
             errorMessage = nil
         } catch {
-            errorMessage = "Kunde inte läsa kostnadsrapporten. Kontrollera GitHub-tokenens behörighet och att OpenAI-rapporten har körts."
+            errorMessage = "Kunde inte läsa kostnadsrapporten. Kontrollera GitHub-tokenens behörighet och att rapporten har körts."
         }
     }
 }
