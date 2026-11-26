@@ -17,6 +17,7 @@ struct AssistantView: View {
     @State private var queueFilter = "Alla"
     @State private var queueSearch = ""
     @State private var queueProjectFilter = "Alla projekt"
+    @State private var showsAllQueueItems = false
     @State private var isRefreshingQueue = false
     @State private var githubToken = ""
     @State private var hasSavedToken = false
@@ -312,7 +313,7 @@ struct AssistantView: View {
                 Text("Inga uppdrag i den här vyn ännu.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             } else {
-                ForEach(filteredQueueItems.prefix(12)) { item in
+                ForEach(showsAllQueueItems ? filteredQueueItems : Array(filteredQueueItems.prefix(12))) { item in
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: queueSymbol(item.statusRawValue))
                             .foregroundStyle(queueColor(item.statusRawValue))
@@ -362,6 +363,22 @@ struct AssistantView: View {
                     }
                     .padding(10)
                     .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+                }
+                if filteredQueueItems.count > 12 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showsAllQueueItems.toggle()
+                        }
+                    } label: {
+                        Label(
+                            showsAllQueueItems ? "Visa färre uppdrag" : "Visa alla \\(filteredQueueItems.count) uppdrag",
+                            systemImage: showsAllQueueItems ? "chevron.up" : "chevron.down"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(StudioTheme.accentCyan)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                    }
                 }
             }
             Text("Kön är lokal på den här enheten och synkroniseras ännu inte mellan användare eller appar.")
