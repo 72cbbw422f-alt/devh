@@ -279,9 +279,9 @@ struct ProjectDetailView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     SectionHeading(eyebrow: "KÄLLKOD", title: "GitHub")
-                    Text("72cbbw422f-alt/\(project.repository)")
+                    Text(githubRepositoryPath)
                         .font(.system(.body, design: .monospaced)).foregroundStyle(StudioTheme.secondaryText)
-                    Link("Öppna repository", destination: URL(string: "https://github.com/72cbbw422f-alt/\(project.repository)")!)
+                    Link("Öppna repository", destination: URL(string: "https://github.com/\(githubRepositoryPath)")!)
                         .font(.subheadline.weight(.semibold)).tint(StudioTheme.accent)
                 }
                 .padding(16)
