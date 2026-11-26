@@ -50,13 +50,24 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import os
+          import os, re
           allowed = {".swift", ".md", ".yml", ".yaml", ".json", ".plist", ".txt"}
-          ignored = {".git", "Pods", "build", "DerivedData", ".build", "node_modules"}
+          ignored = {".git", "Pods", "build", "DerivedData", ".build", "node_modules", ".env"}
+          sensitive_names = {"credentials.json", "secrets.json", "google-services.json", "google-services.plist"}
+          patterns = [
+              re.compile(r"(?i)\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
+              re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
+              re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+              re.compile(r"(?i)(Bearer\s+)[A-Za-z0-9._~+/-]{12,}"),
+              re.compile(r"""(?i)(["']?(?:api[_-]?key|access[_-]?token|client[_-]?secret|password|secret)["']?\s*[:=]\s*["']?)[A-Za-z0-9_./+=-]{12,}""")
+          ]
           chunks = []
           total = 0
+          redactions = 0
           for path in sorted(Path(".").rglob("*")):
               if not path.is_file() or any(part in ignored for part in path.parts):
+                  continue
+              if path.name.lower() in sensitive_names or path.name.startswith(".env"):
                   continue
               if path.suffix.lower() not in allowed and path.name not in {"Package.swift", "project.yml"}:
                   continue
@@ -64,12 +75,16 @@ jobs:
                   body = path.read_text(encoding="utf-8")
               except Exception:
                   continue
+              for pattern in patterns:
+                  body, count = pattern.subn(lambda match: (match.group(1) if match.lastindex else "") + "[REDACTED]", body)
+                  redactions += count
               chunk = f"\n\n===== {path} =====\n{body[:10000]}"
               chunks.append(chunk)
               total += len(chunk)
               if total >= 45000:
                   break
           context = "".join(chunks) or "No supported source files were found."
+          print(f"Prepared source context; redacted {redactions} possible secret value(s).")
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("context<<DEVHUB_CONTEXT\n")
               output.write(context[:50000])
