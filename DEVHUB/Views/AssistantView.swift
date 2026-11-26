@@ -686,10 +686,10 @@ struct AssistantView: View {
                 await MainActor.run {
                     item.patchStatusRawValue = "dispatched"; item.updatedAt = .now
                     statusMessage = "Förslaget är godkänt och skickat till GitHub. Där kontrolleras grundversionen och diffen innan en separat branch och PR skapas."
-                    modelContext.insert(DEVHUBNotification(title: "Byte-förslag godkänt", message: "GitHub har tagit emot det godkända förslaget för (item.projectRepository).", category: "assistant"))
+                    modelContext.insert(DEVHUBNotification(title: "Byte-förslag godkänt", message: "GitHub har tagit emot det godkända förslaget för \\(item.projectRepository).", category: "assistant"))
                 }
             } catch {
-                await MainActor.run { item.patchStatusRawValue = "pending"; statusMessage = "Kunde inte skicka godkännandet: (error.localizedDescription)" }
+                await MainActor.run { item.patchStatusRawValue = "pending"; statusMessage = "Kunde inte skicka godkännandet: \\(error.localizedDescription)" }
             }
         }
     }
