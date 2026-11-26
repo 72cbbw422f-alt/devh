@@ -118,10 +118,10 @@ struct GitHubRepositoryService {
             return (cached.snapshot, cached.latestCommit)
         }
 
-        let repoURL = URL(string: "https://api.github.com/repos/\\(path)")!
+        let repoURL = URL(string: "https://api.github.com/repos/\(path)")!
         let snapshot: GitHubRepositorySnapshot = try await request(repoURL)
 
-        let commitsURL = URL(string: "https://api.github.com/repos/\\(path)/commits?per_page=1")!
+        let commitsURL = URL(string: "https://api.github.com/repos/\(path)/commits?per_page=1")!
         let commits: [GitHubCommitSnapshot]? = try? await request(commitsURL)
         let result = CachedGitHubRepository(snapshot: snapshot, latestCommit: commits?.first)
         await GitHubRepositoryCache.shared.store(result, for: path)
@@ -134,7 +134,7 @@ struct GitHubRepositoryService {
             return cached
         }
 
-        let url = URL(string: "https://api.github.com/repos/\\(path)/actions/runs?per_page=1")!
+        let url = URL(string: "https://api.github.com/repos/\(path)/actions/runs?per_page=1")!
         let response: WorkflowRunsResponse = try await request(url)
         let latest = response.workflowRuns.first
         await GitHubRepositoryCache.shared.storeWorkflow(latest, for: path)
@@ -165,7 +165,7 @@ struct GitHubRepositoryService {
         value = value.replacingOccurrences(of: "http://github.com/", with: "")
         if value.hasSuffix(".git") { value.removeLast(4) }
         value = value.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if !value.contains("/") { value = "72cbbw422f-alt/\\(value)" }
+        if !value.contains("/") { value = "72cbbw422f-alt/\(value)" }
         return value
     }
 
