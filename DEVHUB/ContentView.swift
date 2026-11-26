@@ -1,4 +1,6 @@
 import SwiftUI
+import SwiftData
+
 enum StudioTab: String, CaseIterable, Identifiable {
     case overview="Översikt", projects="Projekt", assistant="Assistent", activity="Utveckling", roadmap="Roadmap", revenue="Ekonomi", analytics="Analys"
     var id:String { rawValue }
@@ -14,10 +16,17 @@ enum StudioTab: String, CaseIterable, Identifiable {
         }
     }
 }
+
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(filter: #Predicate<StudioProjectRecord> { !$0.isArchived },
+           sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
     @State private var selection:StudioTab = .overview
-    @State private var projects = StudioProject.samples
     @State private var selectedProject:StudioProject?
+    @State private var showingAddProject = false
+
+    private var projects: [StudioProject] { storedProjects.map(\.project) }
+
     var body: some View {
         TabView(selection:$selection) {
             NavigationStack {
@@ -27,6 +36,14 @@ struct ContentView: View {
             NavigationStack {
                 ProjectListView(projects:projects) { selectedProject = $0 }
                     .navigationDestination(item:$selectedProject) { ProjectDetailView(project:$0) }
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button { showingAddProject = true } label: {
+                                Image(systemName: "plus").fontWeight(.semibold)
+                            }
+                            .accessibilityLabel("Lägg till projekt")
+                        }
+                    }
             }.tabItem { Label(StudioTab.projects.rawValue,systemImage:StudioTab.projects.symbol) }.tag(StudioTab.projects)
             NavigationStack { AssistantView() }
                 .tabItem { Label(StudioTab.assistant.rawValue,systemImage:StudioTab.assistant.symbol) }.tag(StudioTab.assistant)
@@ -34,6 +51,22 @@ struct ContentView: View {
                 NavigationStack { PlaceholderView(tab:tab) }
                     .tabItem { Label(tab.rawValue,systemImage:tab.symbol) }.tag(tab)
             }
-        }.tint(StudioTheme.accent).preferredColorScheme(.dark)
+        }
+        .tint(StudioTheme.accent)
+        .preferredColorScheme(.dark)
+        .sheet(isPresented: $showingAddProject) {
+            AddProjectView { project in
+                modelContext.insert(StudioProjectRecord(project: project))
+                selectedProject = project
+            }
+        }
+        .task { seedProjectsIfNeeded() }
+    }
+
+    private func seedProjectsIfNeeded() {
+        guard storedProjects.isEmpty else { return }
+        for project in StudioProject.samples {
+            modelContext.insert(StudioProjectRecord(project: project))
+        }
     }
 }
