@@ -126,6 +126,13 @@ struct AssistantView: View {
                 refreshQueueStatuses()
             }
         }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                guard !Task.isCancelled else { break }
+                refreshQueueStatuses()
+            }
+        }
     }
 
     private var byteControlCard: some View {
@@ -304,8 +311,28 @@ struct AssistantView: View {
                                 Text(analysis)
                                     .font(.caption)
                                     .foregroundStyle(StudioTheme.secondaryText)
-                                    .lineLimit(5)
+                                    .lineLimit(3)
                                     .textSelection(.enabled)
+                                DisclosureGroup("Läs hela analysen") {
+                                    Group {
+                                        if let formatted = try? AttributedString(markdown: analysis) {
+                                            Text(formatted)
+                                        } else {
+                                            Text(analysis)
+                                        }
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(StudioTheme.secondaryText)
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.top, 6)
+                                }
+                                .font(.caption.weight(.semibold))
+                                .tint(StudioTheme.accentCyan)
+                            } else if item.statusRawValue == "completed" {
+                                Text("Analysen är klar. Resultatet hämtas…")
+                                    .font(.caption)
+                                    .foregroundStyle(StudioTheme.muted)
                             }
                             if let rawURL = item.workflowURL, let url = URL(string: rawURL) {
                                 Link("Öppna körning", destination: url)
