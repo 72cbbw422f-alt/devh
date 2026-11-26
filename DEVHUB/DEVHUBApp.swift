@@ -8,6 +8,6 @@ struct DEVHUBApp: App {
             ContentView()
                 .preferredColorScheme(.dark)
         }
-        .modelContainer(for: ProjectTaskItem.self)
+        .modelContainer(for: [ProjectTaskItem.self, StudioProjectRecord.self])
     }
 }
