@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct ProjectCard: View {
     let project: StudioProject
@@ -112,7 +113,18 @@ struct ProjectListView: View {
 
 struct ProjectDetailView: View {
     let project: StudioProject
-    @State private var completedTasks: Set<String> = []
+    @Environment(\.modelContext) private var modelContext
+    @Query private var storedTasks: [ProjectTaskItem]
+    @State private var newTaskTitle = ""
+
+    init(project: StudioProject) {
+        self.project = project
+        let projectID = project.id
+        _storedTasks = Query(
+            filter: #Predicate<ProjectTaskItem> { $0.projectID == projectID },
+            sort: \ProjectTaskItem.createdAt
+        )
+    }
 
     private var milestones: [String] {
         switch project.id {
@@ -125,7 +137,7 @@ struct ProjectDetailView: View {
         }
     }
 
-    private var tasks: [String] {
+    private var suggestedTasks: [String] {
         switch project.id {
         case "familjen": ["Färdigställ kalenderflödet", "Verifiera delade listor", "Testa inbjudningsflödet"]
         case "watchlist": ["Förfina progress-listan", "Kontrollera metadataimport", "Testa statusfilter"]
@@ -136,10 +148,13 @@ struct ProjectDetailView: View {
         }
     }
 
+    private var completedCount: Int { storedTasks.filter(\.isCompleted).count }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 ProjectCard(project: project)
+
                 VStack(alignment: .leading, spacing: 12) {
                     SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
                     ForEach(Array(milestones.enumerated()), id: \.offset) { index, milestone in
@@ -163,27 +178,47 @@ struct ProjectDetailView: View {
                 .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
                 .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 13) {
                     HStack {
                         SectionHeading(eyebrow: "ATT GÖRA", title: "Arbetslista")
                         Spacer()
-                        Text("\(completedTasks.count)/\(tasks.count)")
+                        Text("\(completedCount)/\(storedTasks.count)")
                             .font(.caption.monospacedDigit().bold()).foregroundStyle(StudioTheme.accentCyan)
                     }
-                    ForEach(tasks, id: \.self) { task in
-                        Button {
-                            if completedTasks.contains(task) { completedTasks.remove(task) }
-                            else { completedTasks.insert(task) }
-                        } label: {
-                            HStack(spacing: 11) {
-                                Image(systemName: completedTasks.contains(task) ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3).foregroundStyle(completedTasks.contains(task) ? StudioTheme.accentCyan : StudioTheme.muted)
-                                Text(task).font(.subheadline).foregroundStyle(completedTasks.contains(task) ? StudioTheme.muted : StudioTheme.text)
-                                Spacer()
+                    if storedTasks.isEmpty {
+                        Text("Förbereder projektets första uppgifter…")
+                            .font(.caption).foregroundStyle(StudioTheme.muted)
+                    } else {
+                        ForEach(storedTasks) { task in
+                            Button { task.isCompleted.toggle() } label: {
+                                HStack(spacing: 11) {
+                                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .font(.title3).foregroundStyle(task.isCompleted ? StudioTheme.accentCyan : StudioTheme.muted)
+                                    Text(task.title)
+                                        .font(.subheadline)
+                                        .foregroundStyle(task.isCompleted ? StudioTheme.muted : StudioTheme.text)
+                                        .strikethrough(task.isCompleted, color: StudioTheme.muted)
+                                    Spacer()
+                                }
+                                .contentShape(Rectangle())
                             }
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    }
+                    HStack(spacing: 9) {
+                        TextField("Lägg till en uppgift…", text: $newTaskTitle)
+                            .font(.subheadline)
+                            .textInputAutocapitalization(.sentences)
+                            .padding(11)
+                            .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+                        Button(action: addTask) {
+                            Image(systemName: "plus")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                                .frame(width: 42, height: 42)
+                                .background(StudioTheme.accent, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .disabled(newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
                 .padding(16)
@@ -201,7 +236,7 @@ struct ProjectDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
                 .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
-                Text("Milstolpar och uppgifter är initialt redigerbara lokala arbetsunderlag. GitHub-synkronisering och beständig lagring kopplas in separat.")
+                Text("Uppgifter sparas lokalt på enheten med SwiftData. GitHub-synkronisering av milstolpar planeras separat.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             }
             .padding(18)
@@ -211,5 +246,20 @@ struct ProjectDetailView: View {
         .background(StudioTheme.background.ignoresSafeArea())
         .navigationTitle(project.name)
         .navigationBarTitleDisplayMode(.inline)
+        .task { seedTasksIfNeeded() }
+    }
+
+    private func addTask() {
+        let title = newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        modelContext.insert(ProjectTaskItem(projectID: project.id, title: title))
+        newTaskTitle = ""
+    }
+
+    private func seedTasksIfNeeded() {
+        guard storedTasks.isEmpty else { return }
+        for title in suggestedTasks {
+            modelContext.insert(ProjectTaskItem(projectID: project.id, title: title))
+        }
     }
 }
