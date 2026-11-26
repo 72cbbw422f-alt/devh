@@ -116,7 +116,7 @@ struct GitHubRepositoryService {
     func fetchLatestWorkflowRun(repository: String) async throws -> GitHubWorkflowRunSnapshot? {
         let path = normalizedPath(repository)
         let parts = path.split(separator: "/", omittingEmptySubsequences: false)
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_\.")
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
         guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy(allowed.contains) }) else {
             throw GitHubRepositoryError.invalidRepository
         }
