@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import Security
 import ZIPFoundation
 
@@ -9,6 +10,7 @@ private struct AssistantRepository: Identifiable {
 }
 
 struct AssistantView: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
     @State private var task = ""
     @State private var githubToken = ""
@@ -269,6 +271,11 @@ struct AssistantView: View {
                     isSending = false
                     runStatus = result.message
                     workflowURL = result.url
+                    modelContext.insert(DEVHUBNotification(
+                        title: result.message.contains("lyckades") ? "Byte har slutfört en analys" : "Byte-körningen misslyckades",
+                        message: result.message,
+                        category: result.message.contains("lyckades") ? "assistant" : "issue"
+                    ))
                 }
                 if result.message.contains("lyckades") {
                     do {
@@ -286,6 +293,11 @@ struct AssistantView: View {
                     isSending = false
                     statusMessage = error.localizedDescription
                     runStatus = "Kunde inte bekräfta att AI-körningen blev klar."
+                    modelContext.insert(DEVHUBNotification(
+                        title: "Byte kunde inte slutföra uppdraget",
+                        message: error.localizedDescription,
+                        category: "issue"
+                    ))
                 }
             }
         }
