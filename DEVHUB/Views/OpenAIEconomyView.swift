@@ -67,8 +67,8 @@ struct OpenAIEconomyView: View {
                     Text(errorMessage).font(.caption).foregroundStyle(.orange)
                 }
             }
-            .padding(18)
-            .frame(maxWidth: 760)
+            .padding(28)
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .background(StudioTheme.background.ignoresSafeArea())
