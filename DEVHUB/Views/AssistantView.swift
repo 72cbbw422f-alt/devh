@@ -483,7 +483,9 @@ struct AssistantView: View {
                     if shouldFetchAnalysis {
                         let analysis = try await GitHubWorkflowClient.fetchAnalysis(runID: runID, token: token)
                         await MainActor.run {
-                            item.analysisText = analysis
+                            let responseID = extractResponseID(from: analysis)
+                            item.analysisText = cleanAnalysis(from: analysis, responseID: responseID)
+                            item.conversationResponseID = responseID ?? item.conversationResponseID
                             recoveredCount += 1
                             modelContext.insert(DEVHUBNotification(
                                 title: "Byte har levererat analysen",
@@ -502,6 +504,21 @@ struct AssistantView: View {
                 statusMessage = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
             }
         }
+    }
+
+    private func extractResponseID(from text: String) -> String? {
+        guard let marker = text.range(of: "<!-- DEVHUB_RESPONSE_ID:"),
+              let end = text[marker.upperBound...].range(of: " -->") else { return nil }
+        let value = String(text[marker.upperBound..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private func cleanAnalysis(from text: String, responseID: String?) -> String {
+        var cleaned = text
+        if let responseID {
+            cleaned = cleaned.replacingOccurrences(of: "<!-- DEVHUB_RESPONSE_ID:\(responseID) -->", with: "")
+        }
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var workModeDescription: String {
@@ -627,8 +644,8 @@ struct AssistantView: View {
                 if result.message.contains("lyckades") {
                     do {
                         let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
-                        let responseID = text.components(separatedBy: "<!-- DEVHUB_RESPONSE_ID:").dropFirst().first?.components(separatedBy: " -->").first
-                        let cleanText = text.replacingOccurrences(of: #"<\\!-- DEVHUB_RESPONSE_ID:[^>]+ -->"#, with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+                        let responseID = extractResponseID(from: text)
+                        let cleanText = cleanAnalysis(from: text, responseID: responseID)
                         await MainActor.run {
                             analysisText = cleanText
                             if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
