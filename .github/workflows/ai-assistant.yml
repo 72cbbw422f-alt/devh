@@ -123,5 +123,18 @@ jobs:
               summary.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
               summary.write("**Task:** " + os.environ["TASK"] + "\n\n")
               summary.write(answer + "\n")
-          print("AI analysis completed. Open the workflow run Summary.")
+          with open("analysis.md", "w", encoding="utf-8") as result:
+              result.write("# DEVHUB AI analysis\n\n")
+              result.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
+              result.write("**Task:** " + os.environ["TASK"] + "\n\n")
+              result.write(answer + "\n")
+          print("AI analysis completed and saved as analysis.md.")
+          PY
+
+      - name: Upload AI result
+        uses: actions/upload-artifact@v4
+        with:
+          name: devhub-ai-result
+          path: analysis.md
+          retention-days: 14
           PY
