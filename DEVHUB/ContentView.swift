@@ -20,6 +20,7 @@ enum StudioTab: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
+    @Query private var storedTasks: [ProjectTaskItem]
     @State private var selection:StudioTab = .overview
     @State private var selectedProject:StudioProject?
     @State private var showingAddProject = false
@@ -72,6 +73,14 @@ struct ContentView: View {
     }
 
     private func seedProjectsIfNeeded() {
+        // Watchlist was explicitly retired. Remove its old local seed and checklist during migration.
+        for project in storedProjects where project.id == "watchlist" {
+            modelContext.delete(project)
+        }
+        for task in storedTasks where task.projectID == "watchlist" {
+            modelContext.delete(task)
+        }
+
         guard storedProjects.isEmpty else { return }
         for project in StudioProject.samples {
             modelContext.insert(StudioProjectRecord(project: project))
