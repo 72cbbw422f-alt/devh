@@ -14,6 +14,7 @@ struct AssistantView: View {
     @Query(sort: \ByteWorkItem.createdAt, order: .reverse) private var byteWorkItems: [ByteWorkItem]
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
     @State private var task = ""
+    @State private var queueFilter = "Alla"
     @State private var githubToken = ""
     @State private var hasSavedToken = false
     @State private var isSending = false
