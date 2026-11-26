@@ -10,8 +10,9 @@ final class DEVHUBNotification {
     var createdAt: Date
     var isRead: Bool
     var sourceKey: String?
+    var destinationURL: String?
 
-    init(title: String, message: String, category: String = "system", createdAt: Date = .now, isRead: Bool = false, sourceKey: String? = nil) {
+    init(title: String, message: String, category: String = "system", createdAt: Date = .now, isRead: Bool = false, sourceKey: String? = nil, destinationURL: String? = nil) {
         self.id = UUID()
         self.title = title
         self.message = message
@@ -19,5 +20,6 @@ final class DEVHUBNotification {
         self.createdAt = createdAt
         self.isRead = isRead
         self.sourceKey = sourceKey
+        self.destinationURL = destinationURL
     }
 }
