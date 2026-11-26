@@ -10,6 +10,7 @@ private struct GitHubActivityItem: Identifiable {
     let workflowLabel: String?
     let workflowURL: URL?
     let workflowSucceeded: Bool?
+    let openWorkItems: [GitHubOpenWorkItem]
 }
 
 struct GitHubActivityFeedView: View {
