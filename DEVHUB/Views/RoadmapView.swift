@@ -4,6 +4,14 @@ struct RoadmapView: View {
     let projects: [StudioProject]
     let onSelect: (StudioProject) -> Void
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var roadmapColumns: [GridItem] {
+        horizontalSizeClass == .regular
+            ? [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+            : [GridItem(.flexible())]
+    }
+
     private var activeProjects: [StudioProject] {
         projects.sorted {
             if $0.status == .active && $1.status != .active { return true }
@@ -24,11 +32,13 @@ struct RoadmapView: View {
                 summary
                 VStack(alignment: .leading, spacing: 12) {
                     SectionHeading(eyebrow: "PROJEKT FÖR PROJEKT", title: "Nästa milstolpar")
-                    ForEach(activeProjects) { project in
-                        Button { onSelect(project) } label: {
-                            roadmapCard(project)
+                    LazyVGrid(columns: roadmapColumns, spacing: 14) {
+                        ForEach(activeProjects) { project in
+                            Button { onSelect(project) } label: {
+                                roadmapCard(project)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 Text("Milstolparna visar projektens nuvarande planering. De är inte automatiskt synkroniserade med GitHub ännu.")
@@ -37,7 +47,7 @@ struct RoadmapView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(28)
-            .frame(maxWidth: 1080)
+            .frame(maxWidth: 1180)
             .frame(maxWidth: .infinity)
         }
         .background(StudioTheme.background.ignoresSafeArea())
