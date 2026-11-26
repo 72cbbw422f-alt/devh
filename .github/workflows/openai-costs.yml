@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Fetch organization costs
         env:
-          OPENAI_ADMIN_KEY: \${{ secrets.OPENAI_ADMIN_KEY }}
+          OPENAI_ADMIN_KEY: ${{ secrets.OPENAI_ADMIN_KEY }}
         run: |
           test -n "$OPENAI_ADMIN_KEY" || { echo "Missing OPENAI_ADMIN_KEY repository secret"; exit 1; }
           python3 - <<'PY'
@@ -56,13 +56,12 @@ jobs:
               "projects": [{"projectID": k, "costUSD": round(v, 6)} for k, v in sorted(projects.items(), key=lambda x: -x[1])],
               "lineItems": [{"name": k, "costUSD": round(v, 6)} for k, v in sorted(line_items.items(), key=lambda x: -x[1])]
           }
-          os.makedirs("data", exist_ok=True)
-          with open("data/openai-costs.json", "w") as f:
+          with open("/tmp/openai-costs.json", "w") as f:
               json.dump(snapshot, f, indent=2)
           PY
       - name: Publish snapshot to data branch
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -74,7 +73,7 @@ jobs:
             git rm -rf . || true
           fi
           mkdir -p data
-          cp "$GITHUB_WORKSPACE/data/openai-costs.json" data/openai-costs.json
+          cp /tmp/openai-costs.json data/openai-costs.json
           git add data/openai-costs.json
           git commit -m "Update OpenAI cost snapshot"
           git push origin openai-metrics
