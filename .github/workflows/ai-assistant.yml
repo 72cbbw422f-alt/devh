@@ -4,130 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       project_repository:
-        description: Public project repository to inspect
+        description: Project repository to inspect
         required: true
         type: choice
         options:
-          - 72cbbw422f-alt/project-orbit
-          - 72cbbw422f-alt/vit
-          - 72cbbw422f-alt/fam
-          - 72cbbw422f-alt/vill
-          - 72cbbw422f-alt/binge
-          - 72cbbw422f-alt/news
-          - 72cbbw422f-alt/nex
-          - 72cbbw422f-alt/orb
-      task:
-        description: What should the assistant investigate?
-        required: true
-        type: string
-
-permissions:
-  contents: read
-
-jobs:
-  analyze:
-    name: Analyze project with AI
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Check required secret
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "::error::Missing OPENAI_API_KEY repository secret. Add it in Settings > Secrets and variables > Actions."
-            exit 1
-          fi
-
-      - name: Check out selected project
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.project_repository }}
-          ref: main
-          path: project
-
-      - name: Build a bounded project context
-        id: context
-        working-directory: project
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import os
-          allowed = {".swift", ".md", ".yml", ".yaml", ".json", ".plist", ".txt"}
-          ignored = {".git", "Pods", "build", "DerivedData", ".build", "node_modules"}
-          files = []
-          for path in sorted(Path(".").rglob("*")):
-              if not path.is_file() or any(part in ignored for part in path.parts):
-                  continue
-              if path.suffix.lower() not in allowed and path.name not in {"Package.swift", "project.yml"}:
-                  continue
-              try:
-                  content = path.read_text(encoding="utf-8")
-              except Exception:
-                  continue
-              files.append(f"\n\n===== {path} =====\n{content[:12000]}")
-              if sum(map(len, files)) > 55000:
-                  break
-          context = "".join(files) or "No supported source files were found."
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write("context<<DEVHUB_CONTEXT\n")
-              output.write(context[:60000])
-              output.write("\nDEVHUB_CONTEXT\n")
-          PY
-
-      - name: Ask OpenAI to analyze the project
-        id: ai
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TASK: ${{ inputs.task }}
-          PROJECT_REPOSITORY: ${{ inputs.project_repository }}
-          PROJECT_CONTEXT: ${{ steps.context.outputs.context }}
-        run: |
-          python3 - <<'PY'
-          import json, os, urllib.request, urllib.error
-          prompt = """You are the engineering assistant inside DEVHUB.
-          Analyze the supplied project context and answer the user's task.
-          Be precise, distinguish verified findings from hypotheses, cite file paths,
-          propose small safe next steps, and do not claim to have changed any files.
-          The workflow is read-only. Reply in Swedish unless the user writes in another language.
-          """
-          payload = {
-              "model": "gpt-6.2-sol",
-              "input": [
-                  {"role": "system", "content": prompt},
-                  {"role": "user", "content": "Repository: " + os.environ["PROJECT_REPOSITORY"] +
-                   "\nTask: " + os.environ["TASK"] +
-                   "\n\nProject source context:\n" + os.environ["PROJECT_CONTEXT"]}
-              ],
-              "max_output_tokens": 1800
-          }
-          request = urllib.request.Request(
-              "https://api.openai.com/v1/responses",
-              data=json.dumps(payload).encode(),
-              headers={"Authorization": "Bearer " + os.environ["OPENAI_API_KEY"],
-                       "Content-Type": "application/json"},
-              method="POST"
-          )
-          try:
-              with urllib.request.urlopen(request, timeout=90) as response:
-                  data = json.loads(response.read())
-          except urllib.error.HTTPError as error:
-              detail = error.read().decode(errors="replace")[:1500]
-              raise SystemExit("OpenAI API error " + str(error.code) + ": " + detail)
-          text = "\n\n".join(
-              item.get("text", "")
-              for output in data.get("output", []) if output.get("type") == "message"
-              for item in output.get("content", []) if item.get("type") == "output_text"
-          ).strip()
-          if not text:
-              raise SystemExit("The AI response did not contain readable output.")
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-              summary.write("# DEVHUB AI analysis\n\n")
-              summary.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
-              summary.write("**Task:** " + os.environ["TASK"] + "\n\n")
-              summary.write(text + "\n")
-          print("AI analysis completed. Open the workflow run Summary to read the result.")
-          PY        options:
           - 72cbbw422f-alt/project-orbit
           - 72cbbw422f-alt/fam
           - 72cbbw422f-alt/binge
@@ -153,7 +33,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
-            echo "::error::Missing OPENAI_API_KEY repository secret. Add it in Settings > Secrets and variables > Actions."
+            echo "::error::Missing OPENAI_API_KEY repository secret."
             exit 1
           fi
 
@@ -164,7 +44,7 @@ jobs:
           ref: main
           path: project
 
-      - name: Build a bounded project context
+      - name: Build project context
         id: context
         working-directory: project
         run: |
@@ -173,28 +53,30 @@ jobs:
           import os
           allowed = {".swift", ".md", ".yml", ".yaml", ".json", ".plist", ".txt"}
           ignored = {".git", "Pods", "build", "DerivedData", ".build", "node_modules"}
-          files = []
+          chunks = []
+          total = 0
           for path in sorted(Path(".").rglob("*")):
               if not path.is_file() or any(part in ignored for part in path.parts):
                   continue
               if path.suffix.lower() not in allowed and path.name not in {"Package.swift", "project.yml"}:
                   continue
               try:
-                  content = path.read_text(encoding="utf-8")
+                  body = path.read_text(encoding="utf-8")
               except Exception:
                   continue
-              files.append(f"\n\n===== {path} =====\n{content[:12000]}")
-              if sum(map(len, files)) > 55000:
+              chunk = f"\n\n===== {path} =====\n{body[:10000]}"
+              chunks.append(chunk)
+              total += len(chunk)
+              if total >= 45000:
                   break
-          context = "".join(files) or "No supported source files were found."
+          context = "".join(chunks) or "No supported source files were found."
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("context<<DEVHUB_CONTEXT\n")
-              output.write(context[:60000])
+              output.write(context[:50000])
               output.write("\nDEVHUB_CONTEXT\n")
           PY
 
-      - name: Ask OpenAI to analyze the project
-        id: ai
+      - name: Analyze with OpenAI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TASK: ${{ inputs.task }}
@@ -203,19 +85,17 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, urllib.request, urllib.error
-          prompt = """You are the engineering assistant inside DEVHUB.
-          Analyze the supplied project context and answer the user's task.
-          Be precise, distinguish verified findings from hypotheses, cite file paths,
-          propose small safe next steps, and do not claim to have changed any files.
-          The workflow is read-only. Reply in Swedish unless the user writes in another language.
-          """
+          system = """You are DEVHUB, a careful software engineering assistant.
+          Analyze only the supplied repository context. Distinguish verified findings from hypotheses.
+          Cite exact file paths, suggest safe next steps, and never claim to modify files.
+          Reply in Swedish unless asked otherwise."""
           payload = {
-              "model": "gpt-6.2-sol",
+              "model": "gpt-6",
               "input": [
-                  {"role": "system", "content": prompt},
+                  {"role": "system", "content": system},
                   {"role": "user", "content": "Repository: " + os.environ["PROJECT_REPOSITORY"] +
                    "\nTask: " + os.environ["TASK"] +
-                   "\n\nProject source context:\n" + os.environ["PROJECT_CONTEXT"]}
+                   "\n\nSource context:\n" + os.environ["PROJECT_CONTEXT"]}
               ],
               "max_output_tokens": 1800
           }
@@ -224,25 +104,24 @@ jobs:
               data=json.dumps(payload).encode(),
               headers={"Authorization": "Bearer " + os.environ["OPENAI_API_KEY"],
                        "Content-Type": "application/json"},
-              method="POST"
-          )
+              method="POST")
           try:
               with urllib.request.urlopen(request, timeout=90) as response:
                   data = json.loads(response.read())
           except urllib.error.HTTPError as error:
               detail = error.read().decode(errors="replace")[:1500]
               raise SystemExit("OpenAI API error " + str(error.code) + ": " + detail)
-          text = "\n\n".join(
-              item.get("text", "")
-              for output in data.get("output", []) if output.get("type") == "message"
-              for item in output.get("content", []) if item.get("type") == "output_text"
+          answer = "\n\n".join(
+              part.get("text", "")
+              for item in data.get("output", []) if item.get("type") == "message"
+              for part in item.get("content", []) if part.get("type") == "output_text"
           ).strip()
-          if not text:
+          if not answer:
               raise SystemExit("The AI response did not contain readable output.")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
               summary.write("# DEVHUB AI analysis\n\n")
               summary.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
               summary.write("**Task:** " + os.environ["TASK"] + "\n\n")
-              summary.write(text + "\n")
-          print("AI analysis completed. Open the workflow run Summary to read the result.")
+              summary.write(answer + "\n")
+          print("AI analysis completed. Open the workflow run Summary.")
           PY
