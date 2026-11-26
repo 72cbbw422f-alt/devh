@@ -167,6 +167,7 @@ struct ProjectDetailView: View {
     let project: StudioProject
     @Environment(\.modelContext) private var modelContext
     @Query private var storedTasks: [ProjectTaskItem]
+    @Query private var storedMilestones: [ProjectMilestoneItem]
     @State private var newTaskTitle = ""
 
     init(project: StudioProject) {
@@ -221,22 +222,31 @@ struct ProjectDetailView: View {
                 ProjectCard(project: displayProject)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
-                    ForEach(Array(milestones.enumerated()), id: \.offset) { index, milestone in
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle().fill(index == 0 ? StudioTheme.accent.opacity(0.2) : StudioTheme.elevated).frame(width: 30, height: 30)
-                                if index == 0 {
-                                    Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(StudioTheme.accentCyan)
-                                } else {
-                                    Text("\(index + 1)").font(.caption.bold()).foregroundStyle(StudioTheme.muted)
-                                }
+                    HStack {
+                        SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
+                        Spacer()
+                        Text("\(storedMilestones.filter(\.isCompleted).count)/\(storedMilestones.count)")
+                            .font(.caption.monospacedDigit().bold())
+                            .foregroundStyle(StudioTheme.accentCyan)
+                    }
+                    ForEach(storedMilestones) { milestone in
+                        Button {
+                            milestone.isCompleted.toggle()
+                            milestone.updatedAt = .now
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(milestone.isCompleted ? StudioTheme.accentCyan : StudioTheme.muted)
+                                Text(milestone.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(milestone.isCompleted ? StudioTheme.muted : StudioTheme.text)
+                                    .strikethrough(milestone.isCompleted, color: StudioTheme.muted)
+                                Spacer()
                             }
-                            Text(milestone).font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
-                            Spacer()
-                            if index == 0 { Text("BAS").font(.system(size: 8, weight: .bold)).foregroundStyle(StudioTheme.accentCyan) }
+                            .contentShape(Rectangle())
                         }
-                        if index < milestones.count - 1 { Divider().overlay(StudioTheme.border).padding(.leading, 42) }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(16)
@@ -318,7 +328,7 @@ struct ProjectDetailView: View {
         .background(StudioTheme.background.ignoresSafeArea())
         .navigationTitle(project.name)
         .navigationBarTitleDisplayMode(.inline)
-        .task { seedTasksIfNeeded() }
+        .task { seedProjectTrackingIfNeeded() }
     }
 
     private func addTask() {
@@ -328,10 +338,16 @@ struct ProjectDetailView: View {
         newTaskTitle = ""
     }
 
-    private func seedTasksIfNeeded() {
-        guard storedTasks.isEmpty else { return }
-        for (index, title) in suggestedTasks.enumerated() {
-            modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, weight: index == 0 ? 3 : 2))
+    private func seedProjectTrackingIfNeeded() {
+        if storedTasks.isEmpty {
+            for (index, title) in suggestedTasks.enumerated() {
+                modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, weight: index == 0 ? 3 : 2))
+            }
+        }
+        if storedMilestones.isEmpty {
+            for (index, title) in milestones.enumerated() {
+                modelContext.insert(ProjectMilestoneItem(projectID: project.id, title: title, sortOrder: index))
+            }
         }
     }
 }
