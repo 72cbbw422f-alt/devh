@@ -15,6 +15,7 @@ struct AssistantView: View {
     @State private var isSending = false
     @State private var statusMessage: String?
     @State private var workflowURL: URL?
+    @State private var runStatus: String?
 
     private let repositories: [AssistantRepository] = [
         .init(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
@@ -46,6 +47,15 @@ struct AssistantView: View {
                         .padding(14)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 12))
+                }
+                if let runStatus {
+                    HStack(spacing: 9) {
+                        Image(systemName: runStatus.contains("lyckades") ? "checkmark.circle.fill" : "clock.arrow.circlepath")
+                            .foregroundStyle(runStatus.contains("lyckades") ? .green : StudioTheme.accent)
+                        Text(runStatus).font(.subheadline).foregroundStyle(StudioTheme.text)
+                    }
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 12))
                 }
                 if let workflowURL {
                     Link(destination: workflowURL) {
@@ -233,6 +243,35 @@ private enum GitHubTokenStore {
 }
 
 private enum GitHubWorkflowClient {
+    struct RunResult { let message: String; let url: URL? }
+    private struct RunsResponse: Decodable { let workflow_runs: [WorkflowRun] }
+    private struct WorkflowRun: Decodable {
+        let status: String
+        let conclusion: String?
+        let html_url: String
+        let created_at: String
+    }
+
+    static func waitForRun(startedAt: Date, token: String) async throws -> RunResult {
+        let formatter = ISO8601DateFormatter()
+        for _ in 0..<40 {
+            try await Task.sleep(nanoseconds: 3_000_000_000)
+            var request = URLRequest(url: URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/runs?per_page=10")!)
+            request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.statusCheck }
+            let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
+            guard let run = runs.first(where: { (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10) }) else { continue }
+            if run.status == "completed" {
+                let message = run.conclusion == "success" ? "AI-analysen lyckades! Resultatet finns i GitHub-körningens Summary." : "AI-körningen avslutades med fel (\\(run.conclusion ?? "okänt fel")). Öppna körningen för detaljer."
+                return RunResult(message: message, url: URL(string: run.html_url))
+            }
+        }
+        throw WorkflowError.timeout
+    }
+
     static func dispatch(repository: String, task: String, token: String) async throws {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
@@ -255,11 +294,13 @@ private enum GitHubWorkflowClient {
     }
 
     private enum WorkflowError: LocalizedError {
-        case invalidResponse, permission, http(Int, String)
+        case invalidResponse, permission, statusCheck, timeout, http(Int, String)
         var errorDescription: String? {
             switch self {
             case .invalidResponse: return "GitHub returnerade ett ogiltigt svar."
             case .permission: return "GitHub nekade åtkomst. Kontrollera token och Actions: Read and write."
+            case .statusCheck: return "Uppdraget skickades, men DEVHUB kunde inte läsa status från GitHub. Kontrollera tokenens Actions-behörighet."
+            case .timeout: return "AI-körningen pågår fortfarande. DEVHUB slutade vänta efter två minuter. Öppna GitHub för att följa den."
             case .http(let code, let detail): return "GitHub-anropet misslyckades (HTTP \\(code)): \\(detail)"
             }
         }
