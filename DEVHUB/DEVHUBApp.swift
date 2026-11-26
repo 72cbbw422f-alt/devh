@@ -8,6 +8,6 @@ struct DEVHUBApp: App {
             ContentView()
                 .preferredColorScheme(.dark)
         }
-        .modelContainer(for: [ProjectTaskItem.self, StudioProjectRecord.self, DEVHUBNotification.self, ByteWorkItem.self])
+        .modelContainer(for: [ProjectTaskItem.self, StudioProjectRecord.self, DEVHUBNotification.self, ByteWorkItem.self, ProjectMilestoneItem.self])
     }
 }
