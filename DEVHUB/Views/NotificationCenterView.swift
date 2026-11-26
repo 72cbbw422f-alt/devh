@@ -29,7 +29,7 @@ struct NotificationCenterView: View {
                     VStack(spacing: 12) {
                         Image(systemName: "bell.badge").font(.system(size: 34)).foregroundStyle(StudioTheme.accent)
                         Text("Inga notiser ännu").font(.headline).foregroundStyle(StudioTheme.text)
-                        Text("Byggresultat, godkännanden och Byte-rapporter kommer att visas här när händelsekopplingarna är aktiverade.")
+                        Text("Byggresultat, nya ärenden och Byte-rapporter visas här när de upptäcks.")
                             .font(.subheadline).multilineTextAlignment(.center).foregroundStyle(StudioTheme.muted)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 44)
