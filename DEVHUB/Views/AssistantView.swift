@@ -547,9 +547,9 @@ struct AssistantView: View {
         case "collaborate":
             return "Samarbeta: Fortsätt samma konversation med Byte. Tidigare sammanhang följer med när du väljer Fortsätt samtal."
         case "autopilot":
-            return "Autopilot: Byte analyserar uppdraget självständigt. Kodändringar och automatiska PR:er är ännu inte aktiverade."
+            return "Autopilot: Byte analyserar uppdraget självständigt och föreslår nästa steg. Automatisk kodskrivning och PR-skapande är ännu inte aktiverat."
         default:
-            return "Godkänn först: Byte gör en grundlig analys och presenterar en ändringsplan. Inga filer ändras utan ditt godkännande."
+            return "Godkänn först: Byte analyserar projektet och kan visa konkreta unified-diff-förslag per fil. Förslagen är endast förhandsvisningar – inga filer ändras innan du uttryckligen godkänt dem."
         }
     }
 
