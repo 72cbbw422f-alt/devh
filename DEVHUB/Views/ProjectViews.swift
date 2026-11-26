@@ -180,6 +180,11 @@ struct ProjectDetailView: View {
     @Query private var storedMilestones: [ProjectMilestoneItem]
     @State private var newTaskTitle = ""
     @State private var selectedMilestoneID = ""
+    @State private var showingPRVerification = false
+    @State private var verificationPRInput = ""
+    @State private var verificationTaskID: String?
+    @State private var isVerifyingPR = false
+    @State private var verificationMessage: String?
 
     init(project: StudioProject) {
         self.project = project
@@ -310,6 +315,11 @@ struct ProjectDetailView: View {
                                         .strikethrough(task.isCompleted, color: StudioTheme.muted)
                                     Text("\(task.statusLabel) · Vikt \(max(1, min(task.weight ?? 1, 5))) av 5")
                                         .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
+                                    if let prURL = task.verificationPRURL, let url = URL(string: prURL) {
+                                        Link("Verifierad via GitHub PR", destination: url)
+                                            .font(.system(size: 9, weight: .medium))
+                                            .foregroundStyle(.green)
+                                    }
                                 }
                                 Spacer()
                                 Menu {
@@ -324,6 +334,11 @@ struct ProjectDetailView: View {
                                     Button("Klar – manuellt") {
                                         task.statusRawValue = "completed"
                                         task.isCompleted = true
+                                    }
+                                    Button("Verifiera via GitHub PR…") {
+                                        verificationTaskID = task.id
+                                        verificationPRInput = task.verificationPRURL ?? ""
+                                        showingPRVerification = true
                                     }
                                     Divider()
                                     ForEach(1...5, id: \.self) { weight in
@@ -367,7 +382,7 @@ struct ProjectDetailView: View {
                 .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
 
                 GitHubRepositoryStatusView(repository: githubRepositoryPath)
-                Text("Framsteg räknas automatiskt från avklarade uppgifter och deras vikt (1–5). Uppgifterna sparas lokalt på enheten. GitHub-synkronisering planeras separat.")
+                Text("Manuellt klarmarkerade uppgifter räknas i framstegen. GitHub-verifiering kräver en mergad PR och att samtliga registrerade GitHub-kontroller har godkänts. Uppgiftsdata sparas lokalt på enheten.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             }
             .padding(18)
@@ -378,6 +393,49 @@ struct ProjectDetailView: View {
         .navigationTitle(project.name)
         .navigationBarTitleDisplayMode(.inline)
         .task { seedProjectTrackingIfNeeded() }
+        .alert("Verifiera GitHub-PR", isPresented: $showingPRVerification) {
+            TextField("https://github.com/ägare/repo/pull/123", text: $verificationPRInput)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Avbryt", role: .cancel) { verificationTaskID = nil }
+            Button("Kontrollera och verifiera") { verifyTaskPullRequest() }
+                .disabled(verificationPRInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isVerifyingPR)
+        } message: {
+            Text("Uppgiften blir verifierad först när PR:en är mergad och alla GitHub-kontroller är klara med resultatet success.")
+        }
+        .alert("GitHub-verifiering", isPresented: Binding(get: { verificationMessage != nil }, set: { if !$0 { verificationMessage = nil } })) {
+            Button("OK") { verificationMessage = nil }
+        } message: {
+            Text(verificationMessage ?? "")
+        }
+    }
+
+
+    private func verifyTaskPullRequest() {
+        guard let taskID = verificationTaskID,
+              let task = storedTasks.first(where: { $0.id == taskID }) else { return }
+        let prURL = verificationPRInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        isVerifyingPR = true
+        Task {
+            do {
+                let result = try await GitHubRepositoryService().verifyMergedPullRequest(url: prURL, expectedRepository: githubRepositoryPath)
+                await MainActor.run {
+                    task.verificationPRURL = result.pullRequestURL.absoluteString
+                    task.verificationCommitSHA = result.commitSHA
+                    task.verificationWorkflowURL = result.workflowURL.absoluteString
+                    task.statusRawValue = "verified"
+                    task.isCompleted = true
+                    isVerifyingPR = false
+                    verificationTaskID = nil
+                    verificationMessage = "Godkänd! PR:en är mergad och GitHub-kontrollerna är godkända. Uppgiften är nu verifierad."
+                }
+            } catch {
+                await MainActor.run {
+                    isVerifyingPR = false
+                    verificationMessage = error.localizedDescription
+                }
+            }
+        }
     }
 
     private func addTask() {
