@@ -18,6 +18,9 @@ struct AssistantView: View {
     @State private var workflowURL: URL?
     @State private var runStatus: String?
     @State private var analysisText: String?
+    @FocusState private var focusedField: AssistantInput?
+
+    private enum AssistantInput: Hashable { case token, task }
 
     private let repositories: [AssistantRepository] = [
         .init(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
@@ -63,11 +66,17 @@ struct AssistantView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Label("AI-resultat", systemImage: "sparkles")
                             .font(.headline).foregroundStyle(StudioTheme.text)
-                        Text(analysisText)
-                            .font(.subheadline)
-                            .foregroundStyle(StudioTheme.secondaryText)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Group {
+                            if let formatted = try? AttributedString(markdown: analysisText) {
+                                Text(formatted)
+                            } else {
+                                Text(analysisText)
+                            }
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(StudioTheme.secondaryText)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(15)
                     .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
@@ -87,7 +96,15 @@ struct AssistantView: View {
             }
             .padding(18).frame(maxWidth: 760).frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .background(StudioTheme.background)
+        .background(StudioTheme.background.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Klar") { focusedField = nil }
+            }
+        }
         .navigationTitle("Assistent")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -103,6 +120,9 @@ struct AssistantView: View {
             Label("GitHub-anslutning", systemImage: "lock.shield")
                 .font(.headline).foregroundStyle(StudioTheme.text)
             SecureField("Fine-grained GitHub-token", text: $githubToken)
+                .focused($focusedField, equals: .token)
+                .submitLabel(.done)
+                .onSubmit { focusedField = nil }
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textContentType(.password)
@@ -151,6 +171,9 @@ struct AssistantView: View {
                 prompt: Text("Beskriv uppdraget…").foregroundColor(StudioTheme.muted),
                 axis: .vertical
             )
+                .focused($focusedField, equals: .task)
+                .submitLabel(.send)
+                .onSubmit { submitTask() }
                 .lineLimit(4...7)
                 .foregroundStyle(StudioTheme.text)
                 .tint(StudioTheme.accent)
@@ -185,6 +208,7 @@ struct AssistantView: View {
         }
         let prompt = task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
+        focusedField = nil
         isSending = true
         statusMessage = nil
         workflowURL = nil
@@ -202,8 +226,15 @@ struct AssistantView: View {
                     workflowURL = result.url
                 }
                 if result.message.contains("lyckades") {
-                    let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
-                    await MainActor.run { analysisText = text }
+                    do {
+                        let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
+                        await MainActor.run {
+                            analysisText = text
+                            statusMessage = nil
+                        }
+                    } catch {
+                        await MainActor.run { statusMessage = error.localizedDescription }
+                    }
                 }
             } catch {
                 await MainActor.run {
