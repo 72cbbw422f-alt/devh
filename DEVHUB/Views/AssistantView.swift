@@ -387,6 +387,21 @@ struct AssistantView: View {
                         await MainActor.run { statusMessage = error.localizedDescription }
                     }
                 }
+            } catch GitHubWorkflowClient.WorkflowError.timeout {
+                await MainActor.run {
+                    isSending = false
+                    if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                        item.statusRawValue = "running"
+                        item.updatedAt = .now
+                    }
+                    statusMessage = "Byte arbetar fortfarande i GitHub. Uppdraget ligger kvar som pågående – kontrollera Actions innan du skickar det igen."
+                    runStatus = "Väntetiden i appen tog slut, men det betyder inte att GitHub-körningen har misslyckats."
+                    modelContext.insert(DEVHUBNotification(
+                        title: "Byte arbetar fortfarande",
+                        message: "Appen slutade vänta, men GitHub-körningen kan fortfarande pågå.",
+                        category: "assistant"
+                    ))
+                }
             } catch {
                 await MainActor.run {
                     isSending = false
@@ -539,7 +554,7 @@ private enum GitHubWorkflowClient {
         }
     }
 
-    private enum WorkflowError: LocalizedError {
+    enum WorkflowError: LocalizedError {
         case invalidResponse, permission, statusCheck, timeout, artifactUnavailable, artifactUnreadable, http(Int, String)
         var errorDescription: String? {
             switch self {
