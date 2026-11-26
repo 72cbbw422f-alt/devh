@@ -18,6 +18,11 @@ struct AssistantView: View {
     @State private var workflowURL: URL?
     @State private var runStatus: String?
     @State private var analysisText: String?
+    @AppStorage("byte.workMode") private var workMode = "approval"
+    @AppStorage("byte.allowAutomaticBuilds") private var allowAutomaticBuilds = true
+    @AppStorage("byte.allowAutomaticPullRequests") private var allowAutomaticPullRequests = false
+    @AppStorage("byte.alwaysConfirmDestructive") private var alwaysConfirmDestructive = true
+    @AppStorage("byte.monthlyBudget") private var monthlyBudget = 200.0
     @FocusState private var focusedField: AssistantInput?
 
     private enum AssistantInput: Hashable { case token, task }
@@ -43,6 +48,7 @@ struct AssistantView: View {
                     Text("Välj ett projekt och ge Byte ett uppdrag.")
                         .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
                 }
+                byteControlCard
                 connectionCard
                 requestCard
                 if let statusMessage {
@@ -113,6 +119,45 @@ struct AssistantView: View {
                 hasSavedToken = true
             }
         }
+    }
+
+    private var byteControlCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "cpu.fill").font(.title3).foregroundStyle(StudioTheme.accent)
+                    .frame(width: 38, height: 38).background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 11))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Byte · Arbetsinställningar").font(.headline).foregroundStyle(StudioTheme.text)
+                    Text("Välj hur självständigt Byte ska arbeta.").font(.caption).foregroundStyle(StudioTheme.muted)
+                }
+            }
+            Picker("Arbetsläge", selection: $workMode) {
+                Text("Fråga först").tag("approval")
+                Text("Autopilot").tag("autopilot")
+            }.pickerStyle(.segmented)
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: workMode == "autopilot" ? "sparkles" : "hand.raised.fill").foregroundStyle(StudioTheme.accent)
+                Text(workMode == "autopilot" ? "Autopilot är valt. Automatiskt genomförande kopplas in i ett senare steg." : "Byte analyserar och föreslår. Du godkänner innan ändringar genomförs.")
+                    .font(.caption).foregroundStyle(StudioTheme.secondaryText)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(11).background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+            Toggle("Starta byggningar automatiskt", isOn: $allowAutomaticBuilds).tint(StudioTheme.accent)
+            Toggle("Tillåt automatiska pull requests", isOn: $allowAutomaticPullRequests).tint(StudioTheme.accent)
+            Toggle("Kräv alltid godkännande för radering och överskrivning", isOn: $alwaysConfirmDestructive).tint(StudioTheme.accent)
+            Divider().overlay(StudioTheme.border)
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Månadsbudget för AI").font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                    Text("Budgettak i kronor · lokal inställning").font(.caption).foregroundStyle(StudioTheme.muted)
+                }
+                Spacer()
+                TextField("200", value: $monthlyBudget, format: .number.precision(.fractionLength(0...2)))
+                    .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 82)
+                    .padding(9).background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9)).foregroundStyle(StudioTheme.text)
+                Text("kr").font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
+            }
+        }.padding(15).frame(maxWidth: .infinity, alignment: .leading)
+            .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
+            .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
     }
 
     private var connectionCard: some View {
