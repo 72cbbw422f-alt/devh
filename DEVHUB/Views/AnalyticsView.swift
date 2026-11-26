@@ -2,15 +2,15 @@ import SwiftUI
 import SwiftData
 
 struct AnalyticsView: View {
-    @Query(sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
-    @Query(sort: \ProjectTaskItem.createdAt) private var allTasks: [ProjectTaskItem]
+    @Query private var storedProjects: [StudioProjectRecord]
+    @Query private var allTasks: [ProjectTaskItem]
 
     private var projects: [StudioProjectRecord] {
         storedProjects.filter { !$0.isArchived }
     }
 
     private var projectIDs: Set<String> {
-        Set(projects.map(\.id))
+        Set(projects.map { $0.id })
     }
 
     private var tasks: [ProjectTaskItem] {
@@ -18,7 +18,7 @@ struct AnalyticsView: View {
     }
 
     private var completedTasks: Int {
-        tasks.filter(\.isCompleted).count
+        tasks.filter { $0.isCompleted }.count
     }
 
     private var taskCompletion: Double {
