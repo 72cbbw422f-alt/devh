@@ -392,6 +392,13 @@ struct AssistantView: View {
                                             .disabled(item.patchStatusRawValue == "dispatching" || item.baseCommitSHA == nil || !patchPreview.contains("--- ") || !patchPreview.contains("+++ "))
                                             if item.patchStatusRawValue == "dispatching" { ProgressView().controlSize(.small) }
                                         }
+                                        if item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" {
+                                            Button { refreshApprovedPatchStatus(for: item) } label: {
+                                                Label("Kontrollera status", systemImage: "arrow.clockwise")
+                                                    .font(.caption.weight(.semibold))
+                                            }
+                                            .tint(StudioTheme.accent)
+                                        }
                                         if let rawURL = item.patchWorkflowURL, let url = URL(string: rawURL) {
                                             Link("Följ GitHub-jobbet", destination: url)
                                                 .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
@@ -695,8 +702,9 @@ struct AssistantView: View {
         item.patchStatusRawValue = "dispatching"
         item.patchWorkflowRunID = nil
         item.patchWorkflowURL = nil
-        statusMessage = "Skickar ditt godkända förslag till GitHub…"
         let startedAt = Date()
+        item.patchDispatchedAt = startedAt
+        statusMessage = "Skickar ditt godkända förslag till GitHub…"
         Task {
             do {
                 try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, token: token)
@@ -740,6 +748,45 @@ struct AssistantView: View {
             }
         }
     }
+    private func refreshApprovedPatchStatus(for item: ByteWorkItem) {
+        guard item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" else { return }
+        guard let token = GitHubTokenStore.read() else {
+            statusMessage = "GitHub-token saknas. Spara den först."
+            return
+        }
+        guard let startedAt = item.patchDispatchedAt else {
+            statusMessage = "Tidpunkten för godkännandet saknas. Skapa en ny analys innan du försöker igen."
+            return
+        }
+        statusMessage = "Kontrollerar GitHub-status…"
+        Task {
+            do {
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, token: token) { runID, runURL in
+                    await MainActor.run {
+                        item.patchWorkflowRunID = runID
+                        item.patchWorkflowURL = runURL?.absoluteString
+                        item.patchStatusRawValue = "running"
+                        item.updatedAt = .now
+                    }
+                }
+                await MainActor.run {
+                    item.patchStatusRawValue = result.message.contains("lyckades") ? "completed" : "failed"
+                    item.patchWorkflowURL = result.url?.absoluteString ?? item.patchWorkflowURL
+                    item.updatedAt = .now
+                    statusMessage = result.message
+                    modelContext.insert(DEVHUBNotification(
+                        title: result.message.contains("lyckades") ? "Byte har skapat ett PR-förslag" : "Byte kunde inte skapa PR",
+                        message: result.message,
+                        category: result.message.contains("lyckades") ? "assistant" : "issue",
+                        destinationURL: result.url?.absoluteString
+                    ))
+                }
+            } catch {
+                await MainActor.run { statusMessage = "Statusen kunde inte bekräftas: \\(error.localizedDescription)" }
+            }
+        }
+    }
+
     private func submitTask() {
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
