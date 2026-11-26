@@ -337,28 +337,44 @@ struct AssistantView: View {
         Task {
             var completedCount = 0
             var failedCount = 0
+            var recoveredCount = 0
             var errorCount = 0
             for item in pendingItems {
                 guard let runID = item.workflowRunID else { continue }
                 do {
                     let status = try await GitHubWorkflowClient.fetchRunStatus(runID: runID, token: token)
+                    var shouldFetchAnalysis = false
                     await MainActor.run {
                         item.workflowURL = status.url?.absoluteString ?? item.workflowURL
                         item.updatedAt = .now
                         if status.status == "completed" {
                             if status.conclusion == "success" {
+                                if item.statusRawValue != "completed" { completedCount += 1 }
                                 item.statusRawValue = "completed"
-                                completedCount += 1
+                                shouldFetchAnalysis = item.analysisText == nil
                             } else {
+                                if item.statusRawValue != "failed" { failedCount += 1 }
                                 item.statusRawValue = "failed"
-                                failedCount += 1
                                 modelContext.insert(DEVHUBNotification(
                                     title: "Byte-körningen misslyckades",
-                                    message: "GitHub avslutade uppdraget med status: \(status.conclusion ?? "okänt fel").",
+                                    message: "GitHub avslutade uppdraget med status: \\(status.conclusion ?? "okänt fel").",
                                     category: "issue",
                                     destinationURL: status.url?.absoluteString
                                 ))
                             }
+                        }
+                    }
+                    if shouldFetchAnalysis {
+                        let analysis = try await GitHubWorkflowClient.fetchAnalysis(runID: runID, token: token)
+                        await MainActor.run {
+                            item.analysisText = analysis
+                            recoveredCount += 1
+                            modelContext.insert(DEVHUBNotification(
+                                title: "Byte har levererat analysen",
+                                message: "Resultatet för uppdraget ‘\\(item.title)’ har hämtats till arbetskön.",
+                                category: "assistant",
+                                destinationURL: item.workflowURL
+                            ))
                         }
                     }
                 } catch {
@@ -367,7 +383,7 @@ struct AssistantView: View {
             }
             await MainActor.run {
                 isRefreshingQueue = false
-                statusMessage = "Arbetskön uppdaterad: \(completedCount) klara, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
+                statusMessage = "Arbetskön uppdaterad: \\(completedCount) nya klara, \\(recoveredCount) analyser återhämtade, \\(failedCount) misslyckade, \\(errorCount) kunde inte kontrolleras."
             }
         }
     }
