@@ -56,6 +56,18 @@ jobs:
           path: project
           fetch-depth: 0
 
+      - name: Create isolated proposal branch
+        working-directory: project
+        env:
+          TASK_TITLE: ${{ inputs.task_title }}
+          BASE_SHA: ${{ inputs.base_sha }}
+        run: |
+          set -euo pipefail
+          slug="$(printf '%s' "$TASK_TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | cut -c1-32 | sed -E 's/^-+|-+$//g')"
+          branch="byte/approved-$GITHUB_RUN_ID-${slug:-change}"
+          git checkout -b "$branch" "$BASE_SHA"
+          echo "branch=$branch" >> "$GITHUB_ENV"
+
       - name: Verify base is still current and validate patch
         working-directory: project
         env:
@@ -113,11 +125,8 @@ jobs:
           BASE_SHA: ${{ inputs.base_sha }}
         run: |
           set -euo pipefail
-          slug="$(printf '%s' "$TASK_TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | cut -c1-32 | sed -E 's/^-+|-+$//g')"
-          branch="byte/approved-$GITHUB_RUN_ID-${slug:-change}"
           git config user.name "DEVHUB Byte"
           git config user.email "devhub-byte@users.noreply.github.com"
-          git checkout -b "$branch" "$BASE_SHA"
           git add -A
           if git diff --cached --quiet; then
             echo "::error::The approved patch produced no changes."
