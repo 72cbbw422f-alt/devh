@@ -162,19 +162,23 @@ struct AssistantView: View {
         isSending = true
         statusMessage = nil
         workflowURL = nil
+        runStatus = "Skickar uppdraget till GitHub…"
+        let startedAt = Date()
         Task {
             do {
                 try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, token: token)
+                await MainActor.run { statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"; task = "" }
+                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, token: token)
                 await MainActor.run {
                     isSending = false
-                    statusMessage = "Uppdraget har skickats. Öppna GitHub-körningen för att läsa resultatet under Summary."
-                    workflowURL = URL(string: "https://github.com/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml")
-                    task = ""
+                    runStatus = result.message
+                    workflowURL = result.url
                 }
             } catch {
                 await MainActor.run {
                     isSending = false
                     statusMessage = error.localizedDescription
+                    runStatus = "Kunde inte bekräfta att AI-körningen blev klar."
                 }
             }
         }
