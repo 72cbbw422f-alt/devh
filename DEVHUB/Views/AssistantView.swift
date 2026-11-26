@@ -524,7 +524,7 @@ struct AssistantView: View {
     private var workModeDescription: String {
         switch workMode {
         case "collaborate":
-            return "Samarbeta: Byte ger en kort analys och konkreta nästa steg. Dialog i flera meddelanden byggs ut separat."
+            return "Samarbeta: Fortsätt samma konversation med Byte. Tidigare sammanhang följer med när du väljer Fortsätt samtal."
         case "autopilot":
             return "Autopilot: Byte analyserar uppdraget självständigt. Kodändringar och automatiska PR:er är ännu inte aktiverade."
         default:
