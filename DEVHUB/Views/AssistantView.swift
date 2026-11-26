@@ -274,7 +274,8 @@ struct AssistantView: View {
                     modelContext.insert(DEVHUBNotification(
                         title: result.message.contains("lyckades") ? "Byte har slutfört en analys" : "Byte-körningen misslyckades",
                         message: result.message,
-                        category: result.message.contains("lyckades") ? "assistant" : "issue"
+                        category: result.message.contains("lyckades") ? "assistant" : "issue",
+                        destinationURL: result.url?.absoluteString
                     ))
                 }
                 if result.message.contains("lyckades") {
