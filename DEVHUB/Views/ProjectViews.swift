@@ -226,7 +226,10 @@ struct ProjectDetailView: View {
                     HStack {
                         SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
                         Spacer()
-                        Text("\(storedMilestones.filter(\.isCompleted).count)/\(storedMilestones.count)")
+                        Text("\(storedMilestones.filter { milestone in
+                            let tasks = storedTasks.filter { $0.milestoneID == milestone.id }
+                            return tasks.isEmpty ? milestone.isCompleted : tasks.allSatisfy { $0.isCompleted }
+                        }.count)/\(storedMilestones.count)")
                             .font(.caption.monospacedDigit().bold())
                             .foregroundStyle(StudioTheme.accentCyan)
                     }
