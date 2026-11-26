@@ -26,6 +26,10 @@ on:
           - collaborate
           - approval
           - autopilot
+      previous_response_id:
+        description: Continue an existing Byte conversation
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -104,6 +108,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TASK: ${{ inputs.task }}
           WORK_MODE: ${{ inputs.work_mode }}
+          PREVIOUS_RESPONSE_ID: ${{ inputs.previous_response_id }}
           PROJECT_REPOSITORY: ${{ inputs.project_repository }}
           PROJECT_CONTEXT: ${{ steps.context.outputs.context }}
         run: |
@@ -135,6 +140,9 @@ jobs:
               ],
               "max_output_tokens": 1800
           }
+          previous_response_id = os.environ.get("PREVIOUS_RESPONSE_ID", "").strip()
+          if previous_response_id:
+              payload["previous_response_id"] = previous_response_id
           request = urllib.request.Request(
               "https://api.openai.com/v1/responses",
               data=json.dumps(payload).encode(),
@@ -159,11 +167,14 @@ jobs:
               summary.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
               summary.write("**Task:** " + os.environ["TASK"] + "\n\n")
               summary.write(answer + "\n")
+          response_id = data.get("id", "")
           with open("analysis.md", "w", encoding="utf-8") as result:
               result.write("# DEVHUB AI analysis\n\n")
               result.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
               result.write("**Task:** " + os.environ["TASK"] + "\n\n")
               result.write(answer + "\n")
+              if response_id:
+                  result.write("\n<!-- DEVHUB_RESPONSE_ID:" + response_id + " -->\n")
           print("AI analysis completed and saved as analysis.md.")
           PY
 
