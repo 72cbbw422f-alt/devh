@@ -50,6 +50,8 @@ struct ContentView: View {
                 NavigationStack {
                     if tab == .roadmap {
                         RoadmapView(projects: projects) { selectedProject = $0 }
+                    } else if tab == .analytics {
+                        AnalyticsView()
                     } else {
                         PlaceholderView(tab: tab)
                     }
