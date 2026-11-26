@@ -366,6 +366,7 @@ struct AssistantView: View {
                         item.statusRawValue = result.message.contains("lyckades") ? "completed" : "failed"
                         item.updatedAt = .now
                         item.workflowURL = result.url?.absoluteString
+                        item.workflowRunID = result.id
                     }
                     runStatus = result.message
                     workflowURL = result.url
