@@ -66,6 +66,11 @@ struct ContentView: View {
         }
         .tint(StudioTheme.accent)
         .preferredColorScheme(.dark)
+        .toolbarBackground(StudioTheme.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(StudioTheme.background, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .background(StudioTheme.background.ignoresSafeArea())
         .sheet(isPresented: $showingAddProject) {
             AddProjectView { project in
                 modelContext.insert(StudioProjectRecord(project: project))
