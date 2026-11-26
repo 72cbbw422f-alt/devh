@@ -11,6 +11,7 @@ private struct AssistantRepository: Identifiable {
 
 struct AssistantView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \\ByteWorkItem.createdAt, order: .reverse) private var byteWorkItems: [ByteWorkItem]
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
     @State private var task = ""
     @State private var githubToken = ""
