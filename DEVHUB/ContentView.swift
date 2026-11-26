@@ -66,23 +66,20 @@ struct ContentView: View {
 
     private var iPadLayout: some View {
         NavigationSplitView {
-            List(selection: $selection) {
+            List {
                 Section("ARBETSPLATS") {
                     ForEach([StudioTab.overview, .projects, .assistant]) { tab in
-                        Label(tab.rawValue, systemImage: tab.symbol)
-                            .tag(tab)
+                        sidebarRow(for: tab)
                     }
                 }
                 Section("UTVECKLING") {
                     ForEach([StudioTab.activity, .roadmap]) { tab in
-                        Label(tab.rawValue, systemImage: tab.symbol)
-                            .tag(tab)
+                        sidebarRow(for: tab)
                     }
                 }
                 Section("INSIKTER") {
                     ForEach([StudioTab.revenue, .analytics, .notifications]) { tab in
-                        Label(tab.rawValue, systemImage: tab.symbol)
-                            .tag(tab)
+                        sidebarRow(for: tab)
                     }
                 }
             }
@@ -115,6 +112,20 @@ struct ContentView: View {
             .background(StudioTheme.background)
         }
         .navigationSplitViewStyle(.balanced)
+    }
+
+    private func sidebarRow(for tab: StudioTab) -> some View {
+        Button {
+            selection = tab
+            selectedProject = nil
+        } label: {
+            Label(tab.rawValue, systemImage: tab.symbol)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(selection == tab ? StudioTheme.text : StudioTheme.secondaryText)
+        .listRowBackground(selection == tab ? StudioTheme.elevated : Color.clear)
     }
 
     private var iPhoneLayout: some View {
