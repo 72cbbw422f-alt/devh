@@ -7,6 +7,9 @@ private struct GitHubActivityItem: Identifiable {
     let commitURL: URL?
     let message: String?
     let pushedAt: Date?
+    let workflowLabel: String?
+    let workflowURL: URL?
+    let workflowSucceeded: Bool?
 }
 
 struct GitHubActivityFeedView: View {
@@ -63,6 +66,12 @@ struct GitHubActivityFeedView: View {
                                     if let commitURL = item.commitURL {
                                         Link("Commit", destination: commitURL)
                                     }
+                                    if let workflowURL = item.workflowURL, let workflowLabel = item.workflowLabel {
+                                        Link(destination: workflowURL) {
+                                            Label(workflowLabel, systemImage: item.workflowSucceeded == true ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                                                .foregroundStyle(item.workflowSucceeded == true ? Color(hex: "6BCB9A") : Color(hex: "E5B86B"))
+                                        }
+                                    }
                                 }
                                 .font(.system(size: 10, weight: .semibold))
                                 .tint(StudioTheme.accent)
@@ -109,6 +118,12 @@ struct GitHubActivityFeedView: View {
         for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
                 let result = try await service.fetchSnapshot(repository: project.repository)
+                let workflow = try? await service.fetchLatestWorkflowRun(repository: project.repository)
+                let workflowSucceeded = workflow?.conclusion == "success"
+                let workflowLabel = workflow.map { run in
+                    if run.status != "completed" { return "Bygger" }
+                    return run.conclusion == "success" ? "Bygge OK" : "Bygge: \\(run.conclusion ?? "okänt")"
+                }
                 latest.append(
                     GitHubActivityItem(
                         id: project.id,
@@ -116,7 +131,10 @@ struct GitHubActivityFeedView: View {
                         repositoryURL: result.0.htmlURL,
                         commitURL: result.1?.htmlURL,
                         message: result.1?.commit.message.components(separatedBy: .newlines).first,
-                        pushedAt: result.0.pushedAt
+                        pushedAt: result.0.pushedAt,
+                        workflowLabel: workflowLabel,
+                        workflowURL: workflow?.htmlURL,
+                        workflowSucceeded: workflow == nil ? nil : workflowSucceeded
                     )
                 )
             } catch {
