@@ -248,6 +248,66 @@ struct AssistantView: View {
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
     }
 
+    private var byteQueueCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Bytes arbetskö", systemImage: "tray.full.fill")
+                    .font(.headline).foregroundStyle(StudioTheme.text)
+                Spacer()
+                Text("\\(byteWorkItems.count) uppdrag")
+                    .font(.caption.monospacedDigit()).foregroundStyle(StudioTheme.muted)
+            }
+            if byteWorkItems.isEmpty {
+                Text("När du skickar ett uppdrag till Byte hamnar det här med aktuell status.")
+                    .font(.caption).foregroundStyle(StudioTheme.muted)
+            } else {
+                ForEach(byteWorkItems.prefix(12)) { item in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: queueSymbol(item.statusRawValue))
+                            .foregroundStyle(queueColor(item.statusRawValue))
+                            .frame(width: 18)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.title).font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                                .lineLimit(3)
+                            Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.statusLabel)
+                                .font(.caption).foregroundStyle(StudioTheme.muted)
+                            if let rawURL = item.workflowURL, let url = URL(string: rawURL) {
+                                Link("Öppna körning", destination: url).font(.caption.weight(.semibold))
+                                    .tint(StudioTheme.accentCyan)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(10)
+                    .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+                }
+            }
+            Text("Kön visar uppdrag som skickats från den här enheten. Den är ännu inte en central kö mellan flera användare eller appar.")
+                .font(.caption2).foregroundStyle(StudioTheme.muted)
+        }
+        .padding(15).frame(maxWidth: .infinity, alignment: .leading)
+        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
+        .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
+    }
+
+    private func queueSymbol(_ status: String) -> String {
+        switch status {
+        case "running": "arrow.triangle.2.circlepath"
+        case "completed": "checkmark.circle.fill"
+        case "failed": "exclamationmark.circle.fill"
+        default: "clock"
+        }
+    }
+
+    private func queueColor(_ status: String) -> Color {
+        switch status {
+        case "running": StudioTheme.accent
+        case "completed": StudioTheme.accentCyan
+        case "failed": .red
+        default: StudioTheme.muted
+        }
+    }
+
     private func submitTask() {
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
