@@ -1,0 +1,128 @@
+{
+  "updatedAt": "2026-11-26T18:00:00.289879+00:00",
+  "monthStart": "2026-11-01",
+  "currency": "USD",
+  "monthToDateUSD": 4e-06,
+  "daily": [
+    {
+      "date": "2026-11-01",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-02",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-03",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-04",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-05",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-06",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-07",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-08",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-09",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-10",
+      "costUSD": 4e-06
+    },
+    {
+      "date": "2026-11-11",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-12",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-13",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-14",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-15",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-16",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-17",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-18",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-19",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-20",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-21",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-22",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-23",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-24",
+      "costUSD": 0.0
+    },
+    {
+      "date": "2026-11-25",
+      "costUSD": 0.0
+    }
+  ],
+  "projects": [
+    {
+      "projectID": "proj_5Su6QOKr6HrdGVX2rVeefCLN",
+      "costUSD": 4e-06
+    }
+  ],
+  "lineItems": [
+    {
+      "name": "gpt-4o-mini-2024-07-18, input",
+      "costUSD": 3e-06
+    },
+    {
+      "name": "gpt-4o-mini-2024-07-18, output",
+      "costUSD": 1e-06
+    },
+    {
+      "name": "gpt-4o-mini-2024-07-18, cached input",
+      "costUSD": 0.0
+    }
+  ]
+}
