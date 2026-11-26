@@ -33,6 +33,19 @@ struct GitHubCommitSnapshot: Decodable, Sendable {
     }
 }
 
+struct GitHubWorkflowRunSnapshot: Decodable, Sendable {
+    let name: String?
+    let htmlURL: URL
+    let status: String
+    let conclusion: String?
+    enum CodingKeys: String, CodingKey {
+        case name
+        case htmlURL = "html_url"
+        case status
+        case conclusion
+    }
+}
+
 enum GitHubRepositoryError: LocalizedError {
     case invalidRepository
     case notFound
@@ -98,6 +111,25 @@ struct GitHubRepositoryService {
         let result = CachedGitHubRepository(snapshot: snapshot, latestCommit: commits?.first)
         await GitHubRepositoryCache.shared.store(result, for: path)
         return (result.snapshot, result.latestCommit)
+    }
+
+    func fetchLatestWorkflowRun(repository: String) async throws -> GitHubWorkflowRunSnapshot? {
+        let path = normalizedPath(repository)
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_\.")
+        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy(allowed.contains) }) else {
+            throw GitHubRepositoryError.invalidRepository
+        }
+        let url = URL(string: "https://api.github.com/repos/\(path)/actions/runs?per_page=1")!
+        let response: WorkflowRunsResponse = try await request(url)
+        return response.workflowRuns.first
+    }
+
+    private struct WorkflowRunsResponse: Decodable {
+        let workflowRuns: [GitHubWorkflowRunSnapshot]
+        enum CodingKeys: String, CodingKey {
+            case workflowRuns = "workflow_runs"
+        }
     }
 
     private func normalizedPath(_ repository: String) -> String {
