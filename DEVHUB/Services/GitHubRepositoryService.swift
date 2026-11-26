@@ -203,23 +203,23 @@ struct GitHubRepositoryService {
         guard parts.count == 4, parts[2] == "pull", let number = Int(parts[3]) else {
             throw GitHubRepositoryError.invalidPullRequest
         }
-        let repositoryPath = "(parts[0])/(parts[1])"
+        let repositoryPath = "\(parts[0])/\(parts[1])"
         let expectedPath = try validatedPath(expectedRepository)
         guard repositoryPath.caseInsensitiveCompare(expectedPath) == .orderedSame else {
             throw GitHubRepositoryError.invalidPullRequest
         }
 
-        let prURL = URL(string: "https://api.github.com/repos/(repositoryPath)/pulls/(number)")!
+        let prURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/pulls/\(number)")!
         let pullRequest: GitHubPullRequestSnapshot = try await request(prURL)
         guard pullRequest.merged else { throw GitHubRepositoryError.pullRequestNotMerged }
 
-        let checksURL = URL(string: "https://api.github.com/repos/(repositoryPath)/commits/(pullRequest.head.sha)/check-runs?per_page=100")!
+        let checksURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/check-runs?per_page=100")!
         let checks: GitHubCheckRunsResponse = try await request(checksURL)
         guard !checks.checkRuns.isEmpty,
               checks.checkRuns.allSatisfy({ $0.status == "completed" && $0.conclusion == "success" }) else {
             throw GitHubRepositoryError.checksNotSuccessful
         }
-        let workflowURL = checks.checkRuns.compactMap(.htmlURL).first ?? pullRequest.htmlURL
+        let workflowURL = checks.checkRuns.compactMap { $0.htmlURL }.first ?? pullRequest.htmlURL
         return GitHubPullRequestVerification(pullRequestURL: pullRequest.htmlURL, commitSHA: pullRequest.head.sha, workflowURL: workflowURL)
     }
 
