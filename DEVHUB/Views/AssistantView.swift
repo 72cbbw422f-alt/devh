@@ -370,10 +370,20 @@ struct AssistantView: View {
                                     .foregroundStyle(StudioTheme.muted)
                                 if let patchPreview = item.patchPreview, !patchPreview.isEmpty {
                                     HStack(spacing: 12) {
-                                        if item.patchStatusRawValue == "dispatched" {
-                                            Label("Godkänt · skickat till GitHub", systemImage: "checkmark.circle.fill")
+                                        switch item.patchStatusRawValue {
+                                        case "dispatched":
+                                            Label("Begäran mottagen · väntar på GitHub", systemImage: "clock")
+                                                .font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                                        case "running":
+                                            Label("GitHub arbetar med förslaget…", systemImage: "arrow.triangle.2.circlepath")
+                                                .font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.accentCyan)
+                                        case "completed":
+                                            Label("PR skapad · redo för granskning", systemImage: "checkmark.circle.fill")
                                                 .font(.caption.weight(.semibold)).foregroundStyle(.green)
-                                        } else {
+                                        case "failed":
+                                            Label("GitHub kunde inte skapa PR", systemImage: "exclamationmark.circle.fill")
+                                                .font(.caption.weight(.semibold)).foregroundStyle(.red)
+                                        default:
                                             Button { approvePatch(for: item) } label: {
                                                 Label("Godkänn och skapa PR", systemImage: "checkmark.shield")
                                                     .font(.caption.weight(.semibold))
@@ -381,6 +391,10 @@ struct AssistantView: View {
                                             .tint(StudioTheme.accent)
                                             .disabled(item.patchStatusRawValue == "dispatching" || item.baseCommitSHA == nil || !patchPreview.contains("--- ") || !patchPreview.contains("+++ "))
                                             if item.patchStatusRawValue == "dispatching" { ProgressView().controlSize(.small) }
+                                        }
+                                        if let rawURL = item.patchWorkflowURL, let url = URL(string: rawURL) {
+                                            Link("Följ GitHub-jobbet", destination: url)
+                                                .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
                                         }
                                     }
                                     if item.baseCommitSHA == nil {
@@ -679,17 +693,50 @@ struct AssistantView: View {
         }
         guard item.patchStatusRawValue != "dispatching" && item.patchStatusRawValue != "dispatched" else { return }
         item.patchStatusRawValue = "dispatching"
+        item.patchWorkflowRunID = nil
+        item.patchWorkflowURL = nil
         statusMessage = "Skickar ditt godkända förslag till GitHub…"
+        let startedAt = Date()
         Task {
             do {
                 try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, token: token)
                 await MainActor.run {
-                    item.patchStatusRawValue = "dispatched"; item.updatedAt = .now
-                    statusMessage = "Förslaget är godkänt och skickat till GitHub. Där kontrolleras grundversionen och diffen innan en separat branch och PR skapas."
-                    modelContext.insert(DEVHUBNotification(title: "Byte-förslag godkänt", message: "GitHub har tagit emot det godkända förslaget för \(item.projectRepository).", category: "assistant"))
+                    item.patchStatusRawValue = "dispatched"
+                    item.updatedAt = .now
+                    statusMessage = "GitHub har tagit emot godkännandet. Väntar på att arbetsflödet startar…"
+                }
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, token: token) { runID, runURL in
+                    await MainActor.run {
+                        item.patchWorkflowRunID = runID
+                        item.patchWorkflowURL = runURL?.absoluteString
+                        item.patchStatusRawValue = "running"
+                        item.updatedAt = .now
+                    }
+                }
+                await MainActor.run {
+                    item.patchStatusRawValue = result.message.contains("lyckades") ? "completed" : "failed"
+                    item.updatedAt = .now
+                    item.patchWorkflowURL = result.url?.absoluteString ?? item.patchWorkflowURL
+                    statusMessage = result.message
+                    modelContext.insert(DEVHUBNotification(
+                        title: result.message.contains("lyckades") ? "Byte har skapat ett PR-förslag" : "Byte kunde inte skapa PR",
+                        message: result.message,
+                        category: result.message.contains("lyckades") ? "assistant" : "issue",
+                        destinationURL: result.url?.absoluteString
+                    ))
+                }
+            } catch GitHubWorkflowClient.WorkflowError.timeout {
+                await MainActor.run {
+                    item.patchStatusRawValue = item.patchWorkflowRunID == nil ? "dispatched" : "running"
+                    item.updatedAt = .now
+                    statusMessage = "GitHub tog emot godkännandet, men DEVHUB hann inte bekräfta slutresultatet. Följ körningen i GitHub innan du försöker igen."
                 }
             } catch {
-                await MainActor.run { item.patchStatusRawValue = "pending"; statusMessage = "Kunde inte skicka godkännandet: \(error.localizedDescription)" }
+                await MainActor.run {
+                    item.patchStatusRawValue = "pending"
+                    item.updatedAt = .now
+                    statusMessage = "Kunde inte skicka godkännandet: \(error.localizedDescription)"
+                }
             }
         }
     }
@@ -910,6 +957,43 @@ private enum GitHubWorkflowClient {
         throw WorkflowError.timeout
     }
 
+
+    static func waitForApprovedPatchRun(
+        startedAt: Date,
+        token: String,
+        onRunFound: @escaping (Int, URL?) async -> Void
+    ) async throws -> RunResult {
+        let formatter = ISO8601DateFormatter()
+        var matchedRun: WorkflowRun?
+        for _ in 0..<40 {
+            try await Task.sleep(nanoseconds: 3_000_000_000)
+            var request = URLRequest(url: URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/apply-byte-patch.yml/runs?per_page=10")!)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.statusCheck }
+            let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
+            if matchedRun == nil {
+                matchedRun = runs.first(where: {
+                    $0.event == "workflow_dispatch" &&
+                    (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
+                })
+                if let run = matchedRun {
+                    await onRunFound(run.id, URL(string: run.html_url))
+                }
+            }
+            guard let run = matchedRun else { continue }
+            let status = try await fetchRunStatus(runID: run.id, token: token)
+            if status.status == "completed" {
+                let message = status.conclusion == "success"
+                    ? "GitHub-arbetsflödet lyckades och PR-förslaget ska nu finnas i projektets Pull requests."
+                    : "GitHub-arbetsflödet misslyckades (\(status.conclusion ?? "okänt fel")). Öppna körningen för loggar och felorsak."
+                return RunResult(id: run.id, message: message, url: status.url ?? URL(string: run.html_url))
+            }
+        }
+        throw WorkflowError.timeout
+    }
 
     static func fetchAnalysis(runID: Int, token: String) async throws -> String {
         let api = "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)/artifacts"
