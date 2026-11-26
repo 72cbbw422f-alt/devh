@@ -230,18 +230,27 @@ struct ProjectDetailView: View {
                             .foregroundStyle(StudioTheme.accentCyan)
                     }
                     ForEach(storedMilestones) { milestone in
+                        let linkedTasks = storedTasks.filter { $0.milestoneID == milestone.id }
+                        let isDone = linkedTasks.isEmpty ? milestone.isCompleted : linkedTasks.allSatisfy { $0.isCompleted }
                         Button {
-                            milestone.isCompleted.toggle()
+                            if linkedTasks.isEmpty { milestone.isCompleted.toggle() }
+                            else { for task in linkedTasks { task.isCompleted = !isDone } }
                             milestone.updatedAt = .now
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "circle")
+                                Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                                     .font(.title3)
-                                    .foregroundStyle(milestone.isCompleted ? StudioTheme.accentCyan : StudioTheme.muted)
-                                Text(milestone.title)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(milestone.isCompleted ? StudioTheme.muted : StudioTheme.text)
-                                    .strikethrough(milestone.isCompleted, color: StudioTheme.muted)
+                                    .foregroundStyle(isDone ? StudioTheme.accentCyan : StudioTheme.muted)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(milestone.title)
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(isDone ? StudioTheme.muted : StudioTheme.text)
+                                        .strikethrough(isDone, color: StudioTheme.muted)
+                                    if !linkedTasks.isEmpty {
+                                        Text("\(linkedTasks.filter { $0.isCompleted }.count)/\(linkedTasks.count) uppgifter")
+                                            .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
+                                    }
+                                }
                                 Spacer()
                             }
                             .contentShape(Rectangle())
