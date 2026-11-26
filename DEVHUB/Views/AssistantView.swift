@@ -149,12 +149,14 @@ struct AssistantView: View {
                 }
             }
             Picker("Arbetsläge", selection: $workMode) {
-                Text("Fråga först").tag("approval")
+                Text("Samarbeta").tag("collaborate")
+                Text("Godkänn först").tag("approval")
                 Text("Autopilot").tag("autopilot")
             }.pickerStyle(.segmented)
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: workMode == "autopilot" ? "sparkles" : "hand.raised.fill").foregroundStyle(StudioTheme.accent)
-                Text(workMode == "autopilot" ? "Autopilot är valt. Automatiskt genomförande kopplas in i ett senare steg." : "Byte analyserar och föreslår. Du godkänner innan ändringar genomförs.")
+                Image(systemName: workMode == "autopilot" ? "sparkles" : (workMode == "collaborate" ? "messages" : "hand.raised.fill"))
+                    .foregroundStyle(StudioTheme.accent)
+                Text(workModeDescription)
                     .font(.caption).foregroundStyle(StudioTheme.secondaryText)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(11).background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
             Toggle("Starta byggningar automatiskt", isOn: $allowAutomaticBuilds).tint(StudioTheme.accent)
@@ -323,7 +325,7 @@ struct AssistantView: View {
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(StudioTheme.text)
                                 .lineLimit(3)
-                            Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.statusLabel)
+                            Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.workModeLabel + " · " + item.statusLabel)
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
                             Text(item.createdAt, style: .relative)
                                 .font(.caption2).foregroundStyle(StudioTheme.muted)
@@ -473,6 +475,17 @@ struct AssistantView: View {
         }
     }
 
+    private var workModeDescription: String {
+        switch workMode {
+        case "collaborate":
+            return "Samarbeta: Byte ger en kort analys och konkreta nästa steg. Dialog i flera meddelanden byggs ut separat."
+        case "autopilot":
+            return "Autopilot: Byte analyserar uppdraget självständigt. Kodändringar och automatiska PR:er är ännu inte aktiverade."
+        default:
+            return "Godkänn först: Byte gör en grundlig analys och presenterar en ändringsplan. Inga filer ändras utan ditt godkännande."
+        }
+    }
+
     private func queueMetric(title: String, count: Int, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(count.formatted())
@@ -532,7 +545,7 @@ struct AssistantView: View {
         let prompt = task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
         focusedField = nil
-        let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt)
+        let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt, workMode: workMode)
         modelContext.insert(queueItem)
         let queueItemID = queueItem.id
         isSending = true
@@ -543,7 +556,7 @@ struct AssistantView: View {
         let startedAt = Date()
         Task {
             do {
-                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, token: token)
+                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: workMode, token: token)
                 await MainActor.run {
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                         item.statusRawValue = "running"
@@ -762,7 +775,7 @@ private enum GitHubWorkflowClient {
         return result
     }
 
-    static func dispatch(repository: String, task: String, token: String) async throws {
+    static func dispatch(repository: String, task: String, workMode: String, token: String) async throws {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -772,7 +785,7 @@ private enum GitHubWorkflowClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "ref": "main",
-            "inputs": ["project_repository": repository, "task": task]
+            "inputs": ["project_repository": repository, "task": task, "work_mode": workMode]
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }
