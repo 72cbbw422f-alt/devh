@@ -1,0 +1,106 @@
+import SwiftUI
+
+struct AddProjectView: View {
+    @Environment(\.dismiss) private var dismiss
+    let onSave: (StudioProject) -> Void
+
+    @State private var name = ""
+    @State private var subtitle = ""
+    @State private var repository = ""
+    @State private var platform = "iOS"
+    @State private var category = "App"
+    @State private var status: ProjectStatus = .planning
+    @State private var accent = "7164F2"
+    @State private var symbol = "app.fill"
+
+    private let platforms = ["iOS", "iPadOS", "tvOS", "macOS", "Webb", "Annat"]
+    private let categories = ["App", "Produktivitet", "Underhållning", "Väder", "Smarta hemmet", "Verktyg", "Annat"]
+    private let accents = ["7164F2", "398BFF", "45C6D9", "568AE8", "E59A55", "46B887"]
+
+    private var normalizedRepository: String {
+        var value = repository.trimmingCharacters(in: .whitespacesAndNewlines)
+        value = value.replacingOccurrences(of: "https://github.com/", with: "")
+        value = value.replacingOccurrences(of: "http://github.com/", with: "")
+        value = value.replacingOccurrences(of: ".git", with: "")
+        return value.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    private var isValid: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        (normalizedRepository.isEmpty || normalizedRepository.split(separator: "/").count == 2)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Grundinformation") {
+                    TextField("Projektnamn", text: $name)
+                    TextField("Kort beskrivning", text: $subtitle, axis: .vertical)
+                        .lineLimit(2...4)
+                    Picker("Plattform", selection: $platform) {
+                        ForEach(platforms, id: \.self) { Text($0) }
+                    }
+                    Picker("Kategori", selection: $category) {
+                        ForEach(categories, id: \.self) { Text($0) }
+                    }
+                }
+                Section("GitHub") {
+                    TextField("ägare/repository eller GitHub-länk", text: $repository)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    Text("Valfritt. Ange exempelvis användare/projektnamn eller hela GitHub-adressen.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Utseende och status") {
+                    Picker("Status", selection: $status) {
+                        ForEach(ProjectStatus.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    HStack {
+                        ForEach(accents, id: \.self) { color in
+                            Circle().fill(Color(hex: color)).frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(.white.opacity(accent == color ? 0.9 : 0), lineWidth: 2).padding(-4))
+                                .onTapGesture { accent = color }
+                                .accessibilityLabel("Välj projektfärg")
+                        }
+                    }.padding(.vertical, 6)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(StudioTheme.background)
+            .navigationTitle("Nytt projekt")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Avbryt") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Lägg till") { save() }.disabled(!isValid)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func save() {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanSubtitle = subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let repo = normalizedRepository
+        let repoName = repo.split(separator: "/").last.map(String.init) ?? ""
+        let project = StudioProject(
+            id: "custom-\(UUID().uuidString)",
+            name: cleanName,
+            subtitle: cleanSubtitle.isEmpty ? "Nytt projekt i DEVHUB." : cleanSubtitle,
+            platform: platform,
+            category: category,
+            repository: repoName,
+            progress: 0,
+            status: status,
+            symbol: symbol,
+            accent: accent,
+            nextMilestone: "Definiera projektets första milstolpe"
+        )
+        onSave(project)
+        dismiss()
+    }
+}
