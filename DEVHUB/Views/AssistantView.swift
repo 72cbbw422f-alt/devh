@@ -512,6 +512,7 @@ struct AssistantView: View {
                             applyUsage(from: analysis, to: item)
                             item.analysisText = cleanAnalysis(from: analysis, responseID: responseID)
                             item.patchPreview = extractPatchPreview(from: analysis)
+                            item.baseCommitSHA = extractBaseSHA(from: analysis)
                             item.conversationResponseID = responseID ?? item.conversationResponseID
                             recoveredCount += 1
                             modelContext.insert(DEVHUBNotification(
@@ -547,6 +548,14 @@ struct AssistantView: View {
         return previews.isEmpty ? nil : previews.joined(separator: "\n\n")
     }
 
+    private func extractBaseSHA(from text: String) -> String? {
+        guard let marker = text.range(of: "<!-- DEVHUB_BASE_SHA:"),
+              let end = text[marker.upperBound...].range(of: " -->") else { return nil }
+        let value = String(text[marker.upperBound..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.count == 40, value.allSatisfy({ $0.isHexDigit }) else { return nil }
+        return value
+    }
+
     private func extractResponseID(from text: String) -> String? {
         guard let marker = text.range(of: "<!-- DEVHUB_RESPONSE_ID:"),
               let end = text[marker.upperBound...].range(of: " -->") else { return nil }
@@ -567,6 +576,9 @@ struct AssistantView: View {
 
     private func cleanAnalysis(from text: String, responseID: String?) -> String {
         var cleaned = text
+        if let baseSHA = extractBaseSHA(from: cleaned) {
+            cleaned = cleaned.replacingOccurrences(of: "<!-- DEVHUB_BASE_SHA:\(baseSHA) -->", with: "")
+        }
         if let responseID {
             cleaned = cleaned.replacingOccurrences(of: "<!-- DEVHUB_RESPONSE_ID:\(responseID) -->", with: "")
         }
@@ -708,6 +720,7 @@ struct AssistantView: View {
                                 applyUsage(from: text, to: item)
                                 item.analysisText = cleanText
                                 item.patchPreview = extractPatchPreview(from: text)
+                                item.baseCommitSHA = extractBaseSHA(from: text)
                                 item.conversationResponseID = responseID
                                 item.updatedAt = .now
                             }
