@@ -12,6 +12,8 @@ private struct AssistantRepository: Identifiable {
 struct AssistantView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ByteWorkItem.createdAt, order: .reverse) private var byteWorkItems: [ByteWorkItem]
+    @Query private var projectTasks: [ProjectTaskItem]
+    @Query private var projectMilestones: [ProjectMilestoneItem]
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
     @State private var task = ""
     @State private var queueFilter = "Alla"
@@ -104,6 +106,18 @@ struct AssistantView: View {
                         .foregroundStyle(StudioTheme.secondaryText)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        if analysisText.contains("DEVHUB_TASKS_BEGIN") {
+                            Button {
+                                importByteTaskProposals(from: analysisText)
+                            } label: {
+                                Label("Lägg Bytes uppgifter i arbetslistan", systemImage: "checklist")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(12)
+                                    .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                            .tint(StudioTheme.accentCyan)
+                        }
                     }
                     .padding(15)
                     .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
@@ -825,6 +839,57 @@ struct AssistantView: View {
                 await MainActor.run { statusMessage = "Statusen kunde inte bekräftas: \(error.localizedDescription)" }
             }
         }
+    }
+
+    private func importByteTaskProposals(from analysis: String) {
+        guard let start = analysis.range(of: "<!-- DEVHUB_TASKS_BEGIN -->"),
+              let end = analysis.range(of: "<!-- DEVHUB_TASKS_END -->"),
+              start.upperBound <= end.lowerBound else {
+            statusMessage = "Byte saknar ett giltigt uppgiftsförslag."
+            return
+        }
+        let json = String(analysis[start.upperBound..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = json.data(using: .utf8),
+              let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            statusMessage = "Bytes uppgiftsförslag kunde inte läsas."
+            return
+        }
+        let repo = selectedRepository.split(separator: "/").last.map(String.init) ?? selectedRepository
+        let projectID: String
+        switch repo {
+        case "fam": projectID = "familjen"
+        case "watch": projectID = "watchlist"
+        case "vill": projectID = "antikspanaren"
+        case "project-orbit": projectID = "regnvakt"
+        case "hem": projectID = "hemma"
+        default: projectID = "devhub"
+        }
+        var added = 0
+        for row in rows.prefix(8) {
+            guard let title = row["title"] as? String else { continue }
+            let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cleanTitle.isEmpty,
+                  !projectTasks.contains(where: {
+                      $0.projectID == projectID &&
+                      $0.title.localizedCaseInsensitiveCompare(cleanTitle) == .orderedSame
+                  }) else { continue }
+            let milestoneTitle = row["milestone"] as? String ?? ""
+            let milestone = projectMilestones.first {
+                $0.projectID == projectID &&
+                $0.title.localizedCaseInsensitiveCompare(milestoneTitle) == .orderedSame
+            }
+            let weight = max(1, min(row["weight"] as? Int ?? 1, 5))
+            modelContext.insert(ProjectTaskItem(
+                projectID: projectID,
+                title: cleanTitle,
+                weight: weight,
+                milestoneID: milestone?.id
+            ))
+            added += 1
+        }
+        statusMessage = added == 0
+            ? "Inga nya uppgifter att lägga till."
+            : "Byte lade till \(added) uppgifter. De är inte markerade som klara."
     }
 
     private func submitTask() {
