@@ -178,6 +178,10 @@ struct ProjectDetailView: View {
             filter: #Predicate<ProjectTaskItem> { $0.projectID == projectID },
             sort: \ProjectTaskItem.createdAt
         )
+        _storedMilestones = Query(
+            filter: #Predicate<ProjectMilestoneItem> { $0.projectID == projectID },
+            sort: \ProjectMilestoneItem.sortOrder
+        )
     }
 
     private var milestones: [String] {
@@ -210,6 +214,12 @@ struct ProjectDetailView: View {
     private var calculatedProgress: Double {
         totalWeight == 0 ? 0 : Double(completedWeight) / Double(totalWeight)
     }
+    private var completedMilestoneCount: Int {
+        storedMilestones.filter { milestone in
+            let linked = storedTasks.filter { $0.milestoneID == milestone.id }
+            return linked.isEmpty ? milestone.isCompleted : linked.allSatisfy { $0.isCompleted }
+        }.count
+    }
     private var displayProject: StudioProject {
         var value = project
         value.progress = calculatedProgress
@@ -226,10 +236,7 @@ struct ProjectDetailView: View {
                     HStack {
                         SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
                         Spacer()
-                        Text("\(storedMilestones.filter { milestone in
-                            let tasks = storedTasks.filter { $0.milestoneID == milestone.id }
-                            return tasks.isEmpty ? milestone.isCompleted : tasks.allSatisfy { $0.isCompleted }
-                        }.count)/\(storedMilestones.count)")
+                        Text("\(completedMilestoneCount)/\(storedMilestones.count)")
                             .font(.caption.monospacedDigit().bold())
                             .foregroundStyle(StudioTheme.accentCyan)
                     }
