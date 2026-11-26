@@ -37,6 +37,7 @@ struct OverviewView: View {
                             .buttonStyle(.plain)
                     }
                 }
+                ProjectHealthOverviewView(projects: projects)
                 SectionHeading(eyebrow: "SENASTE", title: "Senaste aktivitet")
                 GitHubActivityFeedView(projects: projects)
             }
