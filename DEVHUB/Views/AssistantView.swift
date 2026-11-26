@@ -475,6 +475,10 @@ struct AssistantView: View {
                         let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
                         await MainActor.run {
                             analysisText = text
+                            if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                                item.analysisText = text
+                                item.updatedAt = .now
+                            }
                             statusMessage = nil
                         }
                     } catch {
