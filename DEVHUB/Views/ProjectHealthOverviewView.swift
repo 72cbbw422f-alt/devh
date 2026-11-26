@@ -39,6 +39,22 @@ struct ProjectHealthOverviewView: View {
     @State private var isLoading = false
     @State private var lastRefresh: Date?
 
+    private var attentionStates: [ProjectHealthState] {
+        states.filter {
+            $0.error != nil || $0.workflowConclusion == "failure" ||
+            $0.workflowStatus == "in_progress" || $0.workflowStatus == "queued" ||
+            $0.openItemsCount > 0
+        }.sorted { lhs, rhs in
+            func rank(_ state: ProjectHealthState) -> Int {
+                if state.workflowConclusion == "failure" { return 0 }
+                if state.error != nil { return 1 }
+                if state.workflowStatus == "in_progress" || state.workflowStatus == "queued" { return 2 }
+                return 3
+            }
+            return rank(lhs) < rank(rhs)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
@@ -82,12 +98,56 @@ struct ProjectHealthOverviewView: View {
                 .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
             }
 
+            attentionCard
+
             if let lastRefresh {
                 Text("Senast kontrollerad \(lastRefresh.formatted(date: .omitted, time: .shortened)) · uppdateras manuellt")
                     .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
             }
         }
         .task { await refresh() }
+    }
+
+    private var attentionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeading(eyebrow: "PRIORITERING", title: "Fokus just nu")
+            if states.isEmpty {
+                Text("Fokusförslag visas när projektstatusen har hämtats.")
+                    .font(.caption).foregroundStyle(StudioTheme.muted)
+            } else if attentionStates.isEmpty {
+                Label("Inget akut – projekten ser stabila ut", systemImage: "checkmark.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color(hex: "6BCB9A"))
+            } else {
+                ForEach(Array(attentionStates.prefix(3))) { state in
+                    HStack(alignment: .top, spacing: 9) {
+                        Image(systemName: state.workflowConclusion == "failure" ? "xmark.octagon.fill" : (state.error != nil ? "wifi.exclamationmark" : "arrow.up.right.circle.fill"))
+                            .foregroundStyle(state.statusColor)
+                            .frame(width: 17)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(state.projectName)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(StudioTheme.text)
+                            Text(focusReason(for: state))
+                                .font(.system(size: 10))
+                                .foregroundStyle(StudioTheme.muted)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
+        .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
+    }
+
+    private func focusReason(for state: ProjectHealthState) -> String {
+        if state.workflowConclusion == "failure" { return "Åtgärda felet i senaste bygget." }
+        if state.error != nil { return "Kontrollera GitHub-anslutningen." }
+        if state.workflowStatus == "in_progress" || state.workflowStatus == "queued" { return "Byggning pågår eller väntar." }
+        return "\(state.openItemsCount) öppna ärenden att gå igenom."
     }
 
     private func healthRow(_ state: ProjectHealthState) -> some View {
