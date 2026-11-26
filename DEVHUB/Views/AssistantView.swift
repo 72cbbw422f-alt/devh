@@ -15,6 +15,8 @@ struct AssistantView: View {
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
     @State private var task = ""
     @State private var queueFilter = "Alla"
+    @State private var queueSearch = ""
+    @State private var queueProjectFilter = "Alla projekt"
     @State private var isRefreshingQueue = false
     @State private var githubToken = ""
     @State private var hasSavedToken = false
@@ -282,6 +284,18 @@ struct AssistantView: View {
                 }))
                 .accessibilityLabel("Uppdatera arbetskön")
             }
+            TextField("Sök uppdrag eller analys", text: $queueSearch)
+                .textFieldStyle(.plain)
+                .padding(11)
+                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(StudioTheme.text)
+            Picker("Projekt", selection: $queueProjectFilter) {
+                Text("Alla projekt").tag("Alla projekt")
+                ForEach(Array(Set(byteWorkItems.map(\\.projectRepository))).sorted(), id: \\.self) { repository in
+                    Text(repository.replacingOccurrences(of: "72cbbw422f-alt/", with: "")).tag(repository)
+                }
+            }
+            .pickerStyle(.menu).tint(StudioTheme.accent)
             Picker("Visa", selection: $queueFilter) {
                 Text("Alla").tag("Alla")
                 Text("Aktiva").tag("Aktiva")
@@ -354,6 +368,7 @@ struct AssistantView: View {
     }
 
     private func refreshQueueStatuses() {
+        guard !isRefreshingQueue else { return }
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först för att uppdatera arbetskön."
             return
@@ -412,17 +427,27 @@ struct AssistantView: View {
             }
             await MainActor.run {
                 isRefreshingQueue = false
-                statusMessage = "Arbetskön uppdaterad: \\(completedCount) nya klara, \\(recoveredCount) analyser återhämtade, \\(failedCount) misslyckade, \\(errorCount) kunde inte kontrolleras."
+                statusMessage = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
             }
         }
     }
 
     private var filteredQueueItems: [ByteWorkItem] {
-        switch queueFilter {
-        case "Aktiva": byteWorkItems.filter { $0.statusRawValue == "queued" || $0.statusRawValue == "running" }
-        case "Klara": byteWorkItems.filter { $0.statusRawValue == "completed" }
-        case "Misslyckade": byteWorkItems.filter { $0.statusRawValue == "failed" }
-        default: byteWorkItems
+        byteWorkItems.filter { item in
+            let matchesStatus: Bool
+            switch queueFilter {
+            case "Aktiva": matchesStatus = item.statusRawValue == "queued" || item.statusRawValue == "running"
+            case "Klara": matchesStatus = item.statusRawValue == "completed"
+            case "Misslyckade": matchesStatus = item.statusRawValue == "failed"
+            default: matchesStatus = true
+            }
+            let matchesProject = queueProjectFilter == "Alla projekt" || item.projectRepository == queueProjectFilter
+            let query = queueSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+            let matchesSearch = query.isEmpty
+                || item.title.localizedCaseInsensitiveContains(query)
+                || item.projectRepository.localizedCaseInsensitiveContains(query)
+                || (item.analysisText?.localizedCaseInsensitiveContains(query) ?? false)
+            return matchesStatus && matchesProject && matchesSearch
         }
     }
 
