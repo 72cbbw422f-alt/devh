@@ -15,6 +15,7 @@ struct AssistantView: View {
     @Query private var projectTasks: [ProjectTaskItem]
     @Query private var projectMilestones: [ProjectMilestoneItem]
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
+    @State private var analysisRepository = "72cbbw422f-alt/project-orbit"
     @State private var task = ""
     @State private var queueFilter = "Alla"
     @State private var queueSearch = ""
@@ -854,7 +855,7 @@ struct AssistantView: View {
             statusMessage = "Bytes uppgiftsförslag kunde inte läsas."
             return
         }
-        let repo = selectedRepository.split(separator: "/").last.map(String.init) ?? selectedRepository
+        let repo = analysisRepository.split(separator: "/").last.map(String.init) ?? analysisRepository
         let projectID: String
         switch repo {
         case "fam": projectID = "familjen"
@@ -900,6 +901,7 @@ struct AssistantView: View {
         let prompt = task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
         focusedField = nil
+        analysisRepository = selectedRepository
         let previousResponseID = workMode == "collaborate" ? continuingFromResponseID : nil
         let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt, workMode: workMode)
         queueItem.conversationResponseID = previousResponseID
