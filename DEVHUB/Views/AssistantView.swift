@@ -118,8 +118,9 @@ struct AssistantView: View {
             }
             .pickerStyle(.menu).tint(StudioTheme.accent)
             TextField(
+                "Vad vill du att AI:n ska undersöka?",
                 text: $task,
-                prompt: Text("Vad vill du att AI:n ska undersöka?").foregroundColor(StudioTheme.muted),
+                prompt: Text("Beskriv uppdraget…").foregroundColor(StudioTheme.muted),
                 axis: .vertical
             )
                 .lineLimit(4...7)
@@ -238,16 +239,17 @@ private enum GitHubWorkflowClient {
             "ref": "main",
             "inputs": ["project_repository": repository, "task": task]
         ])
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }
         guard (200...299).contains(http.statusCode) else {
+            let detail = String(data: data, encoding: .utf8) ?? ""
             if http.statusCode == 401 || http.statusCode == 403 { throw WorkflowError.permission }
-            throw WorkflowError.http(http.statusCode)
+            throw WorkflowError.http(http.statusCode, detail)
         }
     }
 
     private enum WorkflowError: LocalizedError {
-        case invalidResponse, permission, http(Int)
+        case invalidResponse, permission, http(Int, String)
         var errorDescription: String? {
             switch self {
             case .invalidResponse: return "GitHub returnerade ett ogiltigt svar."
