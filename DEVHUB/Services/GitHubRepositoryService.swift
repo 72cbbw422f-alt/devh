@@ -99,13 +99,13 @@ private actor GitHubRepositoryCache {
         let value: CachedGitHubRepository
         let savedAt: Date
     }
-    private struct WorkflowEntry {
+    private struct WorkItemsEntry {\n        let value: [GitHubOpenWorkItem]\n        let savedAt: Date\n    }\n    private struct WorkflowEntry {
         let value: GitHubWorkflowRunSnapshot?
         let savedAt: Date
     }
 
     private var entries: [String: Entry] = [:]
-    private var workflowEntries: [String: WorkflowEntry] = [:]
+    private var workflowEntries: [String: WorkflowEntry] = [:]\n    private var workItemsEntries: [String: WorkItemsEntry] = [:]
     private let lifetime: TimeInterval = 300
 
     func value(for key: String) -> CachedGitHubRepository? {
@@ -119,6 +119,19 @@ private actor GitHubRepositoryCache {
 
     func store(_ value: CachedGitHubRepository, for key: String) {
         entries[key] = Entry(value: value, savedAt: Date())
+    }
+
+    func workItemsValue(for key: String) -> [GitHubOpenWorkItem]? {
+        guard let entry = workItemsEntries[key],
+              Date().timeIntervalSince(entry.savedAt) < lifetime else {
+            workItemsEntries.removeValue(forKey: key)
+            return nil
+        }
+        return entry.value
+    }
+
+    func storeWorkItems(_ value: [GitHubOpenWorkItem], for key: String) {
+        workItemsEntries[key] = WorkItemsEntry(value: value, savedAt: Date())
     }
 
     func workflowValue(for key: String) -> GitHubWorkflowRunSnapshot?? {
@@ -156,8 +169,13 @@ struct GitHubRepositoryService {
 
     func fetchOpenWorkItems(repository: String) async throws -> [GitHubOpenWorkItem] {
         let path = try validatedPath(repository)
+        if let cached = await GitHubRepositoryCache.shared.workItemsValue(for: path) {
+            return cached
+        }
         let url = URL(string: "https://api.github.com/repos/\(path)/issues?state=open&sort=updated&direction=desc&per_page=4")!
-        return try await request(url)
+        let items: [GitHubOpenWorkItem] = try await request(url)
+        await GitHubRepositoryCache.shared.storeWorkItems(items, for: path)
+        return items
     }
 
     func fetchLatestWorkflowRun(repository: String) async throws -> GitHubWorkflowRunSnapshot? {
