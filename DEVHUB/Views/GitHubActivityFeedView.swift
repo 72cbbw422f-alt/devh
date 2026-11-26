@@ -18,6 +18,7 @@ struct GitHubActivityFeedView: View {
     @State private var items: [GitHubActivityItem] = []
     @State private var isLoading = false
     @State private var hasLoaded = false
+    @State private var failedProjects: [String] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,6 +38,9 @@ struct GitHubActivityFeedView: View {
             emptyState
         } else {
             VStack(spacing: 0) {
+                if !failedProjects.isEmpty {
+                    failureNotice
+                }
                 ForEach(items) { item in
                     activityRow(item)
                     if item.id != items.last?.id {
@@ -46,6 +50,28 @@ struct GitHubActivityFeedView: View {
             }
             .padding(.horizontal, 15)
         }
+    }
+
+    private var failureNotice: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Color(hex: "E5B86B"))
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Viss GitHub-data kunde inte hämtas")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(StudioTheme.text)
+                Text(failedProjects.joined(separator: ", "))
+                    .font(.caption2)
+                    .foregroundStyle(StudioTheme.muted)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(StudioTheme.elevated.opacity(0.7), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 15)
+        .padding(.top, 12)
     }
 
     private var loadingState: some View {
@@ -179,6 +205,7 @@ struct GitHubActivityFeedView: View {
         }
 
         var latest: [GitHubActivityItem] = []
+        failedProjects = []
         let service = GitHubRepositoryService()
         for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
@@ -204,6 +231,7 @@ struct GitHubActivityFeedView: View {
                 )
                 latest.append(activity)
             } catch {
+                failedProjects.append(project.name)
                 continue
             }
         }
