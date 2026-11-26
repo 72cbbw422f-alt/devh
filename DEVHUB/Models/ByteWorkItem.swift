@@ -17,6 +17,7 @@ final class ByteWorkItem {
     var inputTokens: Int = 0
     var outputTokens: Int = 0
     var costUSD: Double = 0
+    var patchPreview: String?
 
     var workModeLabel: String {
         switch workModeRawValue {
