@@ -34,6 +34,6 @@ struct ContentView: View {
                 NavigationStack { PlaceholderView(tab:tab) }
                     .tabItem { Label(tab.rawValue,systemImage:tab.symbol) }.tag(tab)
             }
-        }.tint(StudioTheme.accent).preferredColorScheme(.light)
+        }.tint(StudioTheme.accent).preferredColorScheme(.dark)
     }
 }
