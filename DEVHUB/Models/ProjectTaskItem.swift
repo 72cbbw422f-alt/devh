@@ -10,6 +10,9 @@ final class ProjectTaskItem {
     var statusRawValue: String?
     var weight: Int?
     var milestoneID: String?
+    var verificationPRURL: String?
+    var verificationCommitSHA: String?
+    var verificationWorkflowURL: String?
     var createdAt: Date
 
     var statusLabel: String {
