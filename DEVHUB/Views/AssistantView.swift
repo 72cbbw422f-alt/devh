@@ -359,6 +359,13 @@ struct AssistantView: View {
                                     Link("Öppna körning", destination: url)
                                         .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
                                 }
+                                if let analysis = item.analysisText, !analysis.isEmpty {
+                                    ShareLink(item: analysis) {
+                                        Label("Dela analys", systemImage: "square.and.arrow.up")
+                                            .font(.caption.weight(.semibold))
+                                    }
+                                    .tint(StudioTheme.accentCyan)
+                                }
                                 Button {
                                     selectedRepository = item.projectRepository
                                     task = item.title
