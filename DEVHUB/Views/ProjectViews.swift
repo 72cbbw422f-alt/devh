@@ -278,17 +278,7 @@ struct ProjectDetailView: View {
                 .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
                 .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
 
-                VStack(alignment: .leading, spacing: 10) {
-                    SectionHeading(eyebrow: "KÄLLKOD", title: "GitHub")
-                    Text(githubRepositoryPath)
-                        .font(.system(.body, design: .monospaced)).foregroundStyle(StudioTheme.secondaryText)
-                    Link("Öppna repository", destination: URL(string: "https://github.com/\(githubRepositoryPath)")!)
-                        .font(.subheadline.weight(.semibold)).tint(StudioTheme.accent)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
-                .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+                GitHubRepositoryStatusView(repository: githubRepositoryPath)
                 Text("Uppgifter sparas lokalt på enheten med SwiftData. GitHub-synkronisering av milstolpar planeras separat.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             }
