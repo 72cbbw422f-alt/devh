@@ -1,5 +1,6 @@
 import SwiftUI
 import Security
+import ZIPFoundation
 
 private struct AssistantRepository: Identifiable {
     let name: String
@@ -16,6 +17,7 @@ struct AssistantView: View {
     @State private var statusMessage: String?
     @State private var workflowURL: URL?
     @State private var runStatus: String?
+    @State private var analysisText: String?
 
     private let repositories: [AssistantRepository] = [
         .init(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
@@ -56,6 +58,20 @@ struct AssistantView: View {
                     }
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 12))
+                }
+                if let analysisText {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("AI-resultat", systemImage: "sparkles")
+                            .font(.headline).foregroundStyle(StudioTheme.text)
+                        Text(analysisText)
+                            .font(.subheadline)
+                            .foregroundStyle(StudioTheme.secondaryText)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(15)
+                    .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
+                    .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
                 }
                 if let workflowURL {
                     Link(destination: workflowURL) {
@@ -172,6 +188,7 @@ struct AssistantView: View {
         isSending = true
         statusMessage = nil
         workflowURL = nil
+        analysisText = nil
         runStatus = "Skickar uppdraget till GitHub…"
         let startedAt = Date()
         Task {
@@ -183,6 +200,10 @@ struct AssistantView: View {
                     isSending = false
                     runStatus = result.message
                     workflowURL = result.url
+                }
+                if result.message.contains("lyckades") {
+                    let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
+                    await MainActor.run { analysisText = text }
                 }
             } catch {
                 await MainActor.run {
@@ -243,13 +264,17 @@ private enum GitHubTokenStore {
 }
 
 private enum GitHubWorkflowClient {
-    struct RunResult { let message: String; let url: URL? }
+    struct RunResult { let id: Int; let message: String; let url: URL? }
+    private struct ArtifactsResponse: Decodable { let artifacts: [Artifact] }
+    private struct Artifact: Decodable { let id: Int; let name: String }
     private struct RunsResponse: Decodable { let workflow_runs: [WorkflowRun] }
     private struct WorkflowRun: Decodable {
+        let id: Int
         let status: String
         let conclusion: String?
         let html_url: String
         let created_at: String
+        let event: String
     }
 
     static func waitForRun(startedAt: Date, token: String) async throws -> RunResult {
@@ -263,13 +288,43 @@ private enum GitHubWorkflowClient {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.statusCheck }
             let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
-            guard let run = runs.first(where: { (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10) }) else { continue }
+            guard let run = runs.first(where: { $0.event == "workflow_dispatch" && (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10) }) else { continue }
             if run.status == "completed" {
                 let message = run.conclusion == "success" ? "AI-analysen lyckades! Resultatet finns i GitHub-körningens Summary." : "AI-körningen avslutades med fel (\(run.conclusion ?? "okänt fel")). Öppna körningen för detaljer."
-                return RunResult(message: message, url: URL(string: run.html_url))
+                return RunResult(id: run.id, message: message, url: URL(string: run.html_url))
             }
         }
         throw WorkflowError.timeout
+    }
+
+
+    static func fetchAnalysis(runID: Int, token: String) async throws -> String {
+        let api = "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)/artifacts"
+        var request = URLRequest(url: URL(string: api)!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        let (metadata, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.artifactUnavailable }
+        let artifacts = try JSONDecoder().decode(ArtifactsResponse.self, from: metadata).artifacts
+        guard let artifact = artifacts.first(where: { $0.name == "devhub-ai-result" }) else { throw WorkflowError.artifactUnavailable }
+
+        let downloadURL = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/artifacts/\(artifact.id)/zip")!
+        var downloadRequest = URLRequest(url: downloadURL)
+        downloadRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        downloadRequest.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        let (archiveData, downloadResponse) = try await URLSession.shared.data(for: downloadRequest)
+        guard let downloadHTTP = downloadResponse as? HTTPURLResponse, downloadHTTP.statusCode == 200 else { throw WorkflowError.artifactUnavailable }
+
+        let archiveURL = FileManager.default.temporaryDirectory.appendingPathComponent("devhub-ai-\(runID).zip")
+        try archiveData.write(to: archiveURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: archiveURL) }
+        guard let archive = Archive(url: archiveURL, accessMode: .read),
+              let entry = archive["analysis.md"] else { throw WorkflowError.artifactUnreadable }
+        var output = Data()
+        _ = try archive.extract(entry) { output.append($0) }
+        guard let result = String(data: output, encoding: .utf8), !result.isEmpty else { throw WorkflowError.artifactUnreadable }
+        return result
     }
 
     static func dispatch(repository: String, task: String, token: String) async throws {
@@ -294,13 +349,15 @@ private enum GitHubWorkflowClient {
     }
 
     private enum WorkflowError: LocalizedError {
-        case invalidResponse, permission, statusCheck, timeout, http(Int, String)
+        case invalidResponse, permission, statusCheck, timeout, artifactUnavailable, artifactUnreadable, http(Int, String)
         var errorDescription: String? {
             switch self {
             case .invalidResponse: return "GitHub returnerade ett ogiltigt svar."
             case .permission: return "GitHub nekade åtkomst. Kontrollera token och Actions: Read and write."
             case .statusCheck: return "Uppdraget skickades, men DEVHUB kunde inte läsa status från GitHub. Kontrollera tokenens Actions-behörighet."
             case .timeout: return "AI-körningen pågår fortfarande. DEVHUB slutade vänta efter två minuter. Öppna GitHub för att följa den."
+            case .artifactUnavailable: return "AI-analysen blev klar, men resultatfilen kunde inte hämtas. Öppna körningen i GitHub."
+            case .artifactUnreadable: return "AI-resultatet hämtades men kunde inte läsas."
             case .http(let code, let detail): return "GitHub-anropet misslyckades (HTTP \(code)): \(detail)"
             }
         }
