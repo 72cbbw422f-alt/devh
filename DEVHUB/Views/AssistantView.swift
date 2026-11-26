@@ -359,7 +359,7 @@ struct AssistantView: View {
                                 item.statusRawValue = "failed"
                                 modelContext.insert(DEVHUBNotification(
                                     title: "Byte-körningen misslyckades",
-                                    message: "GitHub avslutade uppdraget med status: \\(status.conclusion ?? "okänt fel").",
+                                    message: "GitHub avslutade uppdraget med status: \(status.conclusion ?? "okänt fel").",
                                     category: "issue",
                                     destinationURL: status.url?.absoluteString
                                 ))
@@ -373,7 +373,7 @@ struct AssistantView: View {
                             recoveredCount += 1
                             modelContext.insert(DEVHUBNotification(
                                 title: "Byte har levererat analysen",
-                                message: "Resultatet för uppdraget ‘\\(item.title)’ har hämtats till arbetskön.",
+                                message: "Resultatet för uppdraget ‘\(item.title)’ har hämtats till arbetskön.",
                                 category: "assistant",
                                 destinationURL: item.workflowURL
                             ))
