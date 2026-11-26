@@ -181,7 +181,6 @@ struct ProjectDetailView: View {
     private var milestones: [String] {
         switch project.id {
         case "familjen": ["Grundstruktur och navigering", "Familjekalender", "Delade inköpslistor", "Inbjudan och synkronisering"]
-        case "watchlist": ["Grundläggande bibliotek", "Progress-lista", "TMDB och metadata", "Import och synkronisering"]
         case "antikspanaren": ["Datamodell och sök", "Auktionskällor", "Bevakningar", "Pris- och objekthistorik"]
         case "regnvakt": ["Väderöversikt", "SMHI-varningar", "Radar och kartlager", "Bakgrundsnotiser"]
         case "hemma": ["Appskal och rum", "HomeKit-anslutning", "Tillbehör och scener", "Automationer"]
@@ -192,7 +191,6 @@ struct ProjectDetailView: View {
     private var suggestedTasks: [String] {
         switch project.id {
         case "familjen": ["Färdigställ kalenderflödet", "Verifiera delade listor", "Testa inbjudningsflödet"]
-        case "watchlist": ["Förfina progress-listan", "Kontrollera metadataimport", "Testa statusfilter"]
         case "antikspanaren": ["Kartlägg källornas API:er", "Normalisera objektsdata", "Planera bevakningsmotor"]
         case "regnvakt": ["Felsök varningsmatchning", "Verifiera radarens tidsstämplar", "Testa notiser i bakgrunden"]
         case "hemma": ["Verifiera HomeKit-entitlements", "Bygg grundläggande rumsvy", "Testa tillbehörsstatus"]
