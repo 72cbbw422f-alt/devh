@@ -34,7 +34,7 @@ struct AssistantView: View {
     @AppStorage("byte.monthlyBudget") private var monthlyBudget = 200.0
     @FocusState private var focusedField: AssistantInput?
 
-    private enum AssistantInput: Hashable { case token, task }
+    private enum AssistantInput: Hashable { case token, task, budget }
 
     private let repositories: [AssistantRepository] = [
         .init(name: "Regnvakt", fullName: "72cbbw422f-alt/project-orbit"),
@@ -182,8 +182,14 @@ struct AssistantView: View {
                 }
                 Spacer()
                 TextField("200", value: $monthlyBudget, format: .number.precision(.fractionLength(0...2)))
-                    .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 82)
-                    .padding(9).background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9)).foregroundStyle(StudioTheme.text)
+                    .focused($focusedField, equals: .budget)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 82)
+                    .padding(9)
+                    .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
+                    .foregroundStyle(StudioTheme.text)
+                    .accessibilityLabel("Månadsbudget för AI i kronor")
                 Text("kr").font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
             }
         }.padding(15).frame(maxWidth: .infinity, alignment: .leading)
@@ -429,11 +435,19 @@ struct AssistantView: View {
                                 }
                             }
                             if let analysis = item.analysisText, !analysis.isEmpty {
-                                Text(analysis)
-                                    .font(.caption)
-                                    .foregroundStyle(StudioTheme.secondaryText)
-                                    .lineLimit(3)
-                                    .textSelection(.enabled)
+                                Group {
+                                    if let formatted = try? AttributedString(markdown: analysis) {
+                                        Text(formatted)
+                                    } else {
+                                        Text(analysis)
+                                    }
+                                }
+                                .font(.caption)
+                                .foregroundStyle(StudioTheme.secondaryText)
+                                .lineSpacing(4)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .lineLimit(5)
+                                .textSelection(.enabled)
                                 DisclosureGroup("Läs hela analysen") {
                                     Group {
                                         if let formatted = try? AttributedString(markdown: analysis) {
