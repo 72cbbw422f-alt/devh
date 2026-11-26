@@ -137,4 +137,3 @@ jobs:
           name: devhub-ai-result
           path: analysis.md
           retention-days: 14
-          PY
