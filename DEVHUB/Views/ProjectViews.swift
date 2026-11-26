@@ -358,15 +358,21 @@ struct ProjectDetailView: View {
     }
 
     private func seedProjectTrackingIfNeeded() {
-        if storedTasks.isEmpty {
-            for (index, title) in suggestedTasks.enumerated() {
-                modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, weight: index == 0 ? 3 : 2))
-            }
-        }
         if storedMilestones.isEmpty {
             for (index, title) in milestones.enumerated() {
                 modelContext.insert(ProjectMilestoneItem(projectID: project.id, title: title, sortOrder: index))
             }
         }
+        if storedTasks.isEmpty {
+            for (index, title) in suggestedTasks.enumerated() where index < storedMilestones.count {
+                modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, weight: index == 0 ? 3 : 2, milestoneID: storedMilestones[index].id))
+            }
+        } else {
+            let unlinkedTasks = storedTasks.filter { $0.milestoneID == nil }
+            for (index, task) in unlinkedTasks.enumerated() where index < storedMilestones.count {
+                task.milestoneID = storedMilestones[index].id
+            }
+        }
+        if selectedMilestoneID.isEmpty { selectedMilestoneID = storedMilestones.first?.id ?? "" }
     }
 }
