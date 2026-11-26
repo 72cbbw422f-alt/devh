@@ -80,6 +80,8 @@ struct AssistantView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textContentType(.password)
+                .foregroundStyle(StudioTheme.text)
+                .tint(StudioTheme.accent)
                 .padding(12)
                 .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
             HStack {
@@ -220,7 +222,7 @@ private enum GitHubTokenStore {
         var errorDescription: String? {
             switch self {
             case .keychain(let status):
-                return "Kunde inte spara GitHub-token i iOS-nyckelringen (felkod \(status))."
+                return "Kunde inte spara GitHub-token i iOS-nyckelringen (felkod \\(status))."
             }
         }
     }
@@ -231,7 +233,7 @@ private enum GitHubWorkflowClient {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -254,7 +256,7 @@ private enum GitHubWorkflowClient {
             switch self {
             case .invalidResponse: return "GitHub returnerade ett ogiltigt svar."
             case .permission: return "GitHub nekade åtkomst. Kontrollera token och Actions: Read and write."
-            case .http(let code): return "GitHub-anropet misslyckades (HTTP \(code)). Kontrollera token och workflow-filen."
+            case .http(let code, let detail): return "GitHub-anropet misslyckades (HTTP \\(code)): \\(detail)"
             }
         }
     }
