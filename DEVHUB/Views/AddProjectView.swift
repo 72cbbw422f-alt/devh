@@ -10,7 +10,7 @@ struct AddProjectView: View {
         self.onSave = onSave
         _name = State(initialValue: project?.name ?? "")
         _subtitle = State(initialValue: project?.subtitle ?? "")
-        _repository = State(initialValue: project.map { $0.repository.contains("/") ? $0.repository : "72cbbw422f-alt/\\($0.repository)" } ?? "")
+        _repository = State(initialValue: project.map { $0.repository.contains("/") ? $0.repository : "72cbbw422f-alt/\($0.repository)" } ?? "")
         _platform = State(initialValue: project?.platform ?? "iOS")
         _category = State(initialValue: project?.category ?? "App")
         _status = State(initialValue: project?.status ?? .planning)
@@ -35,7 +35,7 @@ struct AddProjectView: View {
         var value = repository.trimmingCharacters(in: .whitespacesAndNewlines)
         value = value.replacingOccurrences(of: "https://github.com/", with: "")
         value = value.replacingOccurrences(of: "http://github.com/", with: "")
-        value = value.replacingOccurrences(of: ".git", with: "")
+        if value.hasSuffix(".git") { value.removeLast(4) }
         return value.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
