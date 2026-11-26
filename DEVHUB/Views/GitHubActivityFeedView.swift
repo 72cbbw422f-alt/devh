@@ -35,6 +35,8 @@ struct GitHubActivityFeedView: View {
     private var activityContent: some View {
         if isLoading && items.isEmpty {
             loadingState
+        } else if items.isEmpty && !failedProjects.isEmpty {
+            failedEmptyState
         } else if items.isEmpty {
             emptyState
         } else {
@@ -83,6 +85,24 @@ struct GitHubActivityFeedView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
+    }
+
+    private var failedEmptyState: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            failureNotice
+            VStack(spacing: 8) {
+                Image(systemName: "arrow.triangle.branch")
+                    .font(.title2).foregroundStyle(StudioTheme.accent)
+                Text("Ingen GitHub-data kunde visas")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                Text("Kontrollera repository-adresserna och nätverksanslutningen och försök igen.")
+                    .font(.caption).foregroundStyle(StudioTheme.muted)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(12)
+        }
+        .padding(.bottom, 8)
     }
 
     private var emptyState: some View {
