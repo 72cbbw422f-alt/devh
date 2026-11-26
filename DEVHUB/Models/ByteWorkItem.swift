@@ -10,6 +10,7 @@ final class ByteWorkItem {
     var createdAt: Date
     var updatedAt: Date
     var workflowURL: String?
+    var workflowRunID: Int?
 
     var statusLabel: String {
         switch statusRawValue {
@@ -28,5 +29,6 @@ final class ByteWorkItem {
         createdAt = .now
         updatedAt = .now
         workflowURL = nil
+        workflowRunID = nil
     }
 }
