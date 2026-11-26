@@ -22,7 +22,6 @@ struct OverviewView: View {
                     MetricCard(title: "INTÄKTER / MÅNAD", value: "Ej anslutet", note: "Ingen betalningskälla ansluten", symbol: "arrow.up.right")
                     MetricCard(title: "SENASTE RELEASE", value: "Ej ansluten", note: "Releaseinformation hämtas från GitHub i ett senare steg", symbol: "shippingbox")
                 }
-
                 HStack {
                     SectionHeading(eyebrow: "DIN ARBETSPLATS", title: "Projektöversikt")
                     Spacer()
@@ -32,14 +31,12 @@ struct OverviewView: View {
                     .font(.caption.weight(.semibold))
                     .tint(StudioTheme.accent)
                 }
-
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(projects.prefix(6)) { project in
                         Button { onSelect(project) } label: { ProjectCard(project: project) }
                             .buttonStyle(.plain)
                     }
                 }
-
                 SectionHeading(eyebrow: "SENASTE", title: "Senaste aktivitet")
                 IntegrationEmptyState()
             }
@@ -79,8 +76,7 @@ struct OverviewView: View {
                     .font(.title2.weight(.medium))
                     .foregroundStyle(.white.opacity(0.85))
             }
-            Text("Dina idéer.
-I rörelse.")
+            Text("Dina idéer.\\nI rörelse.")
                 .font(.system(size: 27, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             HStack(alignment: .center, spacing: 12) {
