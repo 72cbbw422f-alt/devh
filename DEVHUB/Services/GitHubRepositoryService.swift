@@ -22,9 +22,6 @@ struct GitHubRepositorySnapshot: Decodable {
 
 struct GitHubCommitSnapshot: Decodable {
     struct Commit: Decodable {
-        struct Details: Decodable {
-            let message: String
-        }
         let message: String
     }
     let htmlURL: URL
@@ -55,7 +52,9 @@ enum GitHubRepositoryError: LocalizedError {
 struct GitHubRepositoryService {
     func fetchSnapshot(repository: String) async throws -> (GitHubRepositorySnapshot, GitHubCommitSnapshot?) {
         let path = normalizedPath(repository)
-        guard path.split(separator: "/").count == 2 else {
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy(allowed.contains) }) else {
             throw GitHubRepositoryError.invalidRepository
         }
 
