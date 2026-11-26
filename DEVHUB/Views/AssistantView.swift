@@ -344,6 +344,11 @@ struct AssistantView: View {
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
                             Text(item.createdAt, style: .relative)
                                 .font(.caption2).foregroundStyle(StudioTheme.muted)
+                            if item.inputTokens > 0 || item.outputTokens > 0 {
+                                Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(StudioTheme.accentCyan)
+                            }
                             if let analysis = item.analysisText, !analysis.isEmpty {
                                 Text(analysis)
                                     .font(.caption)
@@ -484,6 +489,7 @@ struct AssistantView: View {
                         let analysis = try await GitHubWorkflowClient.fetchAnalysis(runID: runID, token: token)
                         await MainActor.run {
                             let responseID = extractResponseID(from: analysis)
+                            applyUsage(from: analysis, to: item)
                             item.analysisText = cleanAnalysis(from: analysis, responseID: responseID)
                             item.conversationResponseID = responseID ?? item.conversationResponseID
                             recoveredCount += 1
@@ -513,12 +519,27 @@ struct AssistantView: View {
         return value.isEmpty ? nil : value
     }
 
+    private func applyUsage(from text: String, to item: ByteWorkItem) {
+        guard let marker = text.range(of: "<!-- DEVHUB_USAGE:"),
+              let end = text[marker.upperBound...].range(of: " -->") else { return }
+        let json = String(text[marker.upperBound..<end.lowerBound])
+        guard let data = json.data(using: .utf8),
+              let usage = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        item.inputTokens = usage["input_tokens"] as? Int ?? item.inputTokens
+        item.outputTokens = usage["output_tokens"] as? Int ?? item.outputTokens
+        item.costUSD = usage["cost_usd"] as? Double ?? item.costUSD
+    }
+
     private func cleanAnalysis(from text: String, responseID: String?) -> String {
         var cleaned = text
         if let responseID {
             cleaned = cleaned.replacingOccurrences(of: "<!-- DEVHUB_RESPONSE_ID:\(responseID) -->", with: "")
         }
-        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let marker = cleaned.range(of: "<!-- DEVHUB_USAGE:"),
+           let end = cleaned[marker.upperBound...].range(of: " -->") {
+            cleaned.removeSubrange(marker.lowerBound..<end.upperBound)
+        }
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var workModeDescription: String {
@@ -645,6 +666,9 @@ struct AssistantView: View {
                     do {
                         let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
                         let responseID = extractResponseID(from: text)
+                        if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                            applyUsage(from: text, to: item)
+                        }
                         let cleanText = cleanAnalysis(from: text, responseID: responseID)
                         await MainActor.run {
                             analysisText = cleanText
