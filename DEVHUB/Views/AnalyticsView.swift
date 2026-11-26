@@ -2,15 +2,15 @@ import SwiftUI
 import SwiftData
 
 struct AnalyticsView: View {
-    @Query(sort: \\StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
-    @Query(sort: \\ProjectTaskItem.createdAt) private var allTasks: [ProjectTaskItem]
+    @Query(sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
+    @Query(sort: \ProjectTaskItem.createdAt) private var allTasks: [ProjectTaskItem]
 
     private var projects: [StudioProjectRecord] {
         storedProjects.filter { !$0.isArchived }
     }
 
     private var projectIDs: Set<String> {
-        Set(projects.map(\\.id))
+        Set(projects.map(\.id))
     }
 
     private var tasks: [ProjectTaskItem] {
@@ -18,7 +18,7 @@ struct AnalyticsView: View {
     }
 
     private var completedTasks: Int {
-        tasks.filter(\\.isCompleted).count
+        tasks.filter(\.isCompleted).count
     }
 
     private var taskCompletion: Double {
@@ -71,10 +71,10 @@ struct AnalyticsView: View {
 
     private var overviewMetrics: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            metricCard(value: "\\(projects.count)", label: "AKTIVA PROJEKT", symbol: "square.stack.3d.up")
-            metricCard(value: "\\(Int(averagePlannedProgress * 100))%", label: "PLANERAT SNITT", symbol: "chart.pie")
-            metricCard(value: "\\(tasks.count)", label: "SPARADE UPPGIFTER", symbol: "checklist")
-            metricCard(value: "\\(completedTasks)", label: "AVKLARADE", symbol: "checkmark.circle")
+            metricCard(value: "\(projects.count)", label: "AKTIVA PROJEKT", symbol: "square.stack.3d.up")
+            metricCard(value: "\(Int(averagePlannedProgress * 100))%", label: "PLANERAT SNITT", symbol: "chart.pie")
+            metricCard(value: "\(tasks.count)", label: "SPARADE UPPGIFTER", symbol: "checklist")
+            metricCard(value: "\(completedTasks)", label: "AVKLARADE", symbol: "checkmark.circle")
         }
     }
 
@@ -102,11 +102,11 @@ struct AnalyticsView: View {
             SectionHeading(eyebrow: "GENOMFÖRANDE", title: "Arbetsuppgifter")
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(tasks.isEmpty ? "Inga uppgifter ännu" : "\\(Int(taskCompletion * 100))% avklarat")
+                    Text(tasks.isEmpty ? "Inga uppgifter ännu" : "\(Int(taskCompletion * 100))% avklarat")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(StudioTheme.text)
                     Spacer()
-                    Text("\\(completedTasks) av \\(tasks.count)")
+                    Text("\(completedTasks) av \(tasks.count)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(StudioTheme.muted)
                 }
@@ -148,7 +148,7 @@ struct AnalyticsView: View {
                             }
                         }
                         .frame(width: 90, height: 6)
-                        Text("\\(count)")
+                        Text("\(count)")
                             .font(.caption.monospacedDigit().weight(.bold))
                             .foregroundStyle(StudioTheme.text)
                             .frame(width: 20, alignment: .trailing)
@@ -165,14 +165,14 @@ struct AnalyticsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(eyebrow: "PLANERING", title: "Framsteg per projekt")
             VStack(spacing: 15) {
-                ForEach(projects.sorted { $0.progress > $1.progress }, id: \\.id) { project in
+                ForEach(projects.sorted { $0.progress > $1.progress }, id: \.id) { project in
                     VStack(alignment: .leading, spacing: 7) {
                         HStack {
                             Text(project.name)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(StudioTheme.text)
                             Spacer()
-                            Text("\\(Int(project.progress * 100))%")
+                            Text("\(Int(project.progress * 100))%")
                                 .font(.caption.monospacedDigit().weight(.bold))
                                 .foregroundStyle(StudioTheme.secondaryText)
                         }
