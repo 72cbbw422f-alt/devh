@@ -89,17 +89,16 @@ struct GitHubActivityFeedView: View {
         .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
         .overlay(alignment: .topTrailing) {
-            if !items.isEmpty {
-                Button {
-                    Task { await refresh() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(StudioTheme.accent)
-                        .padding(12)
-                }
-                .accessibilityLabel("Uppdatera aktivitetsflödet")
+            Button {
+                Task { await refresh() }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(StudioTheme.accent)
+                    .padding(12)
             }
+            .disabled(isLoading)
+            .accessibilityLabel("Uppdatera aktivitetsflödet")
         }
         .task { await refresh() }
     }
