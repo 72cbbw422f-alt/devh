@@ -93,7 +93,7 @@ struct AddProjectView: View {
             subtitle: cleanSubtitle.isEmpty ? "Nytt projekt i DEVHUB." : cleanSubtitle,
             platform: platform,
             category: category,
-            repository: repoName,
+            repository: repo,
             progress: 0,
             status: status,
             symbol: symbol,
