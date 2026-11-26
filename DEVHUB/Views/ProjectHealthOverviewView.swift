@@ -137,10 +137,8 @@ struct ProjectHealthOverviewView: View {
             do {
                 async let snapshotResult = service.fetchSnapshot(repository: project.repository)
                 async let workflowResult = service.fetchLatestWorkflowRun(repository: project.repository)
-                async let workItemsResult = service.fetchOpenWorkItems(repository: project.repository)
                 let snapshot = try await snapshotResult
                 let workflow = try await workflowResult
-                let workItems = try await workItemsResult
                 results.append(ProjectHealthState(
                     id: project.id,
                     projectName: project.name,
