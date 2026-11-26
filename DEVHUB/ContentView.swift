@@ -30,14 +30,14 @@ enum StudioTab: String, CaseIterable, Identifiable, Hashable {
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Query(sort: \\StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
+    @Query(sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
     @Query private var storedTasks: [ProjectTaskItem]
     @State private var selection: StudioTab = .overview
     @State private var selectedProject: StudioProject?
     @State private var showingAddProject = false
 
     private var projects: [StudioProject] {
-        storedProjects.filter { !$0.isArchived }.map(\\.project)
+        storedProjects.filter { !$0.isArchived }.map(\.project)
     }
 
     var body: some View {
