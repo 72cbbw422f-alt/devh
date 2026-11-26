@@ -200,7 +200,8 @@ struct ProjectDetailView: View {
         }
     }
 
-    private var completedCount: Int { storedTasks.filter(\.isCompleted).count }\n    private var githubRepositoryPath: String { project.repository.contains("/") ? project.repository : "72cbbw422f-alt/\\(project.repository)" }\n    private var githubRepositoryPath: String { project.repository.contains("/") ? project.repository : "72cbbw422f-alt/\\(project.repository)" }
+    private var completedCount: Int { storedTasks.filter(\.isCompleted).count }
+    private var githubRepositoryPath: String { project.repository.contains("/") ? project.repository : "72cbbw422f-alt/\(project.repository)" }
 
     var body: some View {
         ScrollView {
