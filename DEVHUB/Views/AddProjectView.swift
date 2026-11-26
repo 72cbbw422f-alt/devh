@@ -10,7 +10,7 @@ struct AddProjectView: View {
         self.onSave = onSave
         _name = State(initialValue: project?.name ?? "")
         _subtitle = State(initialValue: project?.subtitle ?? "")
-        _repository = State(initialValue: project?.repository ?? "")
+        _repository = State(initialValue: project.map { $0.repository.contains("/") ? $0.repository : "72cbbw422f-alt/\\($0.repository)" } ?? "")
         _platform = State(initialValue: project?.platform ?? "iOS")
         _category = State(initialValue: project?.category ?? "App")
         _status = State(initialValue: project?.status ?? .planning)
