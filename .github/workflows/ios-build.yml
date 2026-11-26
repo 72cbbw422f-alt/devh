@@ -14,6 +14,16 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare app icon
+        run: |
+          python3 -m pip install --quiet cairosvg
+          mkdir -p DEVHUB/Assets.xcassets/AppIcon.appiconset
+          python3 - <<'PY'
+          import cairosvg
+          cairosvg.svg2png(url='DEVHUB/Assets.xcassets/AppIcon.appiconset/AppIcon.svg',
+                           write_to='DEVHUB/Assets.xcassets/AppIcon.appiconset/AppIcon.png',
+                           output_width=1024, output_height=1024)
+          PY
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
