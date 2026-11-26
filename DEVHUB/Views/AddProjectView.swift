@@ -100,9 +100,8 @@ struct AddProjectView: View {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanSubtitle = subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let repo = normalizedRepository
-        let repoName = repo.split(separator: "/").last.map(String.init) ?? ""
         let project = StudioProject(
-            id: "custom-\(UUID().uuidString)",
+            id: existingProject?.id ?? "custom-\(UUID().uuidString)",
             name: cleanName,
             subtitle: cleanSubtitle.isEmpty ? "Nytt projekt i DEVHUB." : cleanSubtitle,
             platform: platform,
