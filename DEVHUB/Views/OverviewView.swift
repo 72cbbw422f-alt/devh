@@ -26,7 +26,7 @@ struct OverviewView: View {
                     SectionHeading(eyebrow: "DIN ARBETSPLATS", title: "Projektöversikt")
                     Spacer()
                     NavigationLink("Alla projekt") {
-                        ProjectListView(projects: projects, onSelect: onSelect)
+                        ProjectListView(onSelect: onSelect)
                     }
                     .font(.caption.weight(.semibold))
                     .tint(StudioTheme.accent)
