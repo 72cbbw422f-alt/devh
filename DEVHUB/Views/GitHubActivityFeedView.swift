@@ -122,7 +122,7 @@ struct GitHubActivityFeedView: View {
                 let workflowSucceeded = workflow?.conclusion == "success"
                 let workflowLabel = workflow.map { run in
                     if run.status != "completed" { return "Bygger" }
-                    return run.conclusion == "success" ? "Bygge OK" : "Bygge: \\(run.conclusion ?? "okänt")"
+                    return run.conclusion == "success" ? "Bygge OK" : "Bygge: \(run.conclusion ?? "okänt")"
                 }
                 latest.append(
                     GitHubActivityItem(
