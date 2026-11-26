@@ -72,11 +72,46 @@ struct GitHubOpenWorkItem: Decodable, Identifiable, Sendable {
     }
 }
 
+
+struct GitHubPullRequestVerification: Sendable {
+    let pullRequestURL: URL
+    let commitSHA: String
+    let workflowURL: URL
+}
+
+private struct GitHubPullRequestSnapshot: Decodable {
+    struct Head: Decodable { let sha: String }
+    let htmlURL: URL
+    let merged: Bool
+    let head: Head
+    enum CodingKeys: String, CodingKey {
+        case htmlURL = "html_url"
+        case merged, head
+    }
+}
+
+private struct GitHubCheckRunsResponse: Decodable {
+    struct CheckRun: Decodable {
+        let status: String
+        let conclusion: String?
+        let htmlURL: URL?
+        enum CodingKeys: String, CodingKey {
+            case status, conclusion
+            case htmlURL = "html_url"
+        }
+    }
+    let checkRuns: [CheckRun]
+    enum CodingKeys: String, CodingKey { case checkRuns = "check_runs" }
+}
+
 enum GitHubRepositoryError: LocalizedError {
     case invalidRepository
     case notFound
     case rateLimited
     case requestFailed
+    case pullRequestNotMerged
+    case checksNotSuccessful
+    case invalidPullRequest
 
     var errorDescription: String? {
         switch self {
@@ -84,6 +119,9 @@ enum GitHubRepositoryError: LocalizedError {
         case .notFound: "Repositoryt kunde inte hittas eller är privat."
         case .rateLimited: "GitHub har tillfälligt begränsat antalet förfrågningar. Försök igen senare."
         case .requestFailed: "Kunde inte hämta information från GitHub."
+        case .pullRequestNotMerged: "Pull requesten är inte mergad ännu."
+        case .checksNotSuccessful: "Alla GitHub-kontroller måste vara klara och godkända innan uppgiften kan verifieras."
+        case .invalidPullRequest: "Ange en giltig GitHub PR-länk till projektets repository."
         }
     }
 }
@@ -155,6 +193,36 @@ private actor GitHubRepositoryCache {
 }
 
 struct GitHubRepositoryService {
+
+    func verifyMergedPullRequest(url rawURL: String, expectedRepository: String) async throws -> GitHubPullRequestVerification {
+        guard let url = URL(string: rawURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+              url.scheme == "https", url.host == "github.com" else {
+            throw GitHubRepositoryError.invalidPullRequest
+        }
+        let parts = url.path.split(separator: "/")
+        guard parts.count == 4, parts[2] == "pull", let number = Int(parts[3]) else {
+            throw GitHubRepositoryError.invalidPullRequest
+        }
+        let repositoryPath = "(parts[0])/(parts[1])"
+        let expectedPath = try validatedPath(expectedRepository)
+        guard repositoryPath.caseInsensitiveCompare(expectedPath) == .orderedSame else {
+            throw GitHubRepositoryError.invalidPullRequest
+        }
+
+        let prURL = URL(string: "https://api.github.com/repos/(repositoryPath)/pulls/(number)")!
+        let pullRequest: GitHubPullRequestSnapshot = try await request(prURL)
+        guard pullRequest.merged else { throw GitHubRepositoryError.pullRequestNotMerged }
+
+        let checksURL = URL(string: "https://api.github.com/repos/(repositoryPath)/commits/(pullRequest.head.sha)/check-runs?per_page=100")!
+        let checks: GitHubCheckRunsResponse = try await request(checksURL)
+        guard !checks.checkRuns.isEmpty,
+              checks.checkRuns.allSatisfy({ $0.status == "completed" && $0.conclusion == "success" }) else {
+            throw GitHubRepositoryError.checksNotSuccessful
+        }
+        let workflowURL = checks.checkRuns.compactMap(.htmlURL).first ?? pullRequest.htmlURL
+        return GitHubPullRequestVerification(pullRequestURL: pullRequest.htmlURL, commitSHA: pullRequest.head.sha, workflowURL: workflowURL)
+    }
+
     func fetchSnapshot(repository: String) async throws -> (GitHubRepositorySnapshot, GitHubCommitSnapshot?) {
         let path = try validatedPath(repository)
 
