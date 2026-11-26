@@ -20,6 +20,7 @@ struct StudioProject: Identifiable, Hashable {
 
     static let samples: [StudioProject] = [
         .init(id:"familjen",name:"Familjen",subtitle:"En gemensam plats för familjens vardag.",platform:"iOS",category:"Lifestyle",repository:"fam",progress:0.45,status:.active,symbol:"house.fill",accent:"8B7CFF",nextMilestone:"Familjekalender och delade listor"),
+        .init(id:"watchlist",name:"Watchlist",subtitle:"Håll koll på filmer, serier och tittarhistorik.",platform:"iOS",category:"Entertainment",repository:"watch",progress:0.64,status:.active,symbol:"popcorn.fill",accent:"A18BFF",nextMilestone:"Progress-lista och importflöde"),
         .init(id:"antikspanaren",name:"Antikspanaren",subtitle:"Hitta, bevaka och upptäck antikviteter.",platform:"iOS",category:"Marketplace",repository:"vill",progress:0.35,status:.active,symbol:"sparkles",accent:"45C6D9",nextMilestone:"Datakällor och bevakningar"),
         .init(id:"regnvakt",name:"Regnvakt",subtitle:"Väder, varningar och radar i en samlad upplevelse.",platform:"iOS",category:"Weather",repository:"project-orbit",progress:0.72,status:.active,symbol:"cloud.bolt.rain.fill",accent:"398BFF",nextMilestone:"Stabil SMHI-varningsmotor"),
         .init(id:"hemma",name:"Hemma",subtitle:"Smarta hemmet samlat i en native Apple-app.",platform:"iOS",category:"Home",repository:"hem",progress:0.50,status:.active,symbol:"house.fill",accent:"568AE8",nextMilestone:"HomeKit och grundläggande rumsvy"),
