@@ -11,6 +11,7 @@ private struct GitHubActivityItem: Identifiable {
     let workflowURL: URL?
     let workflowSucceeded: Bool?
     let openWorkItems: [GitHubOpenWorkItem]
+    let dataWarnings: [String]
 }
 
 struct GitHubActivityFeedView: View {
@@ -112,6 +113,7 @@ struct GitHubActivityFeedView: View {
                     .lineLimit(2)
                 repositoryLinks(item)
                 openWorkSection(item.openWorkItems)
+                dataWarningSection(item.dataWarnings)
             }
         }
         .padding(.vertical, 12)
@@ -152,6 +154,20 @@ struct GitHubActivityFeedView: View {
 
     private func workflowColor(_ item: GitHubActivityItem) -> Color {
         item.workflowSucceeded == true ? Color(hex: "6BCB9A") : Color(hex: "E5B86B")
+    }
+
+    @ViewBuilder
+    private func dataWarningSection(_ warnings: [String]) -> some View {
+        if !warnings.isEmpty {
+            HStack(alignment: .top, spacing: 5) {
+                Image(systemName: "exclamationmark.circle")
+                Text(warnings.joined(separator: " · "))
+                    .lineLimit(2)
+            }
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(Color(hex: "E5B86B"))
+            .padding(.top, 3)
+        }
     }
 
     @ViewBuilder
@@ -210,8 +226,21 @@ struct GitHubActivityFeedView: View {
         for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
                 let result = try await service.fetchSnapshot(repository: project.repository)
-                let workflow = try? await service.fetchLatestWorkflowRun(repository: project.repository)
-                let openWorkItems = (try? await service.fetchOpenWorkItems(repository: project.repository)) ?? []
+                var warnings: [String] = []
+                let workflow: GitHubWorkflowRunSnapshot?
+                do {
+                    workflow = try await service.fetchLatestWorkflowRun(repository: project.repository)
+                } catch {
+                    workflow = nil
+                    warnings.append("Actions kunde inte hämtas")
+                }
+                let openWorkItems: [GitHubOpenWorkItem]
+                do {
+                    openWorkItems = try await service.fetchOpenWorkItems(repository: project.repository)
+                } catch {
+                    openWorkItems = []
+                    warnings.append("Issues/PR kunde inte hämtas")
+                }
                 let workflowSucceeded = workflow?.conclusion == "success"
                 let workflowLabel = workflow.map { run in
                     if run.status != "completed" { return "Actions körs" }
@@ -227,7 +256,8 @@ struct GitHubActivityFeedView: View {
                     workflowLabel: workflowLabel,
                     workflowURL: workflow?.htmlURL,
                     workflowSucceeded: workflow == nil ? nil : workflowSucceeded,
-                    openWorkItems: openWorkItems
+                    openWorkItems: openWorkItems,
+                    dataWarnings: warnings
                 )
                 latest.append(activity)
             } catch {
