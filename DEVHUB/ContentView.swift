@@ -19,13 +19,12 @@ enum StudioTab: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<StudioProjectRecord> { !$0.isArchived },
-           sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
+    @Query(sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
     @State private var selection:StudioTab = .overview
     @State private var selectedProject:StudioProject?
     @State private var showingAddProject = false
 
-    private var projects: [StudioProject] { storedProjects.map(\.project) }
+    private var projects: [StudioProject] { storedProjects.filter { !$0.isArchived }.map(\.project) }
 
     var body: some View {
         TabView(selection:$selection) {
