@@ -12,7 +12,7 @@ final class ByteWorkItem {
     var workflowURL: String?
     var workflowRunID: Int?
     var analysisText: String?
-    var workModeRawValue: String
+    var workModeRawValue: String = "approval"
 
     var workModeLabel: String {
         switch workModeRawValue {
