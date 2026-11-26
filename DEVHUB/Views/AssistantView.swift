@@ -270,7 +270,9 @@ struct AssistantView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                 }
-                .disabled(isRefreshingQueue || !byteWorkItems.contains(where: { $0.workflowRunID != nil && $0.statusRawValue == "running" }))
+                .disabled(isRefreshingQueue || !byteWorkItems.contains(where: {
+                    $0.workflowRunID != nil && ($0.statusRawValue == "running" || ($0.statusRawValue == "completed" && $0.analysisText == nil))
+                }))
                 .accessibilityLabel("Uppdatera arbetskön")
             }
             Picker("Visa", selection: $queueFilter) {
