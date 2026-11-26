@@ -18,6 +18,7 @@ final class ByteWorkItem {
     var outputTokens: Int = 0
     var costUSD: Double = 0
     var patchPreview: String?
+    var baseCommitSHA: String?
 
     var workModeLabel: String {
         switch workModeRawValue {
@@ -48,5 +49,6 @@ final class ByteWorkItem {
         analysisText = nil
         workModeRawValue = workMode
         conversationResponseID = nil
+        baseCommitSHA = nil
     }
 }
