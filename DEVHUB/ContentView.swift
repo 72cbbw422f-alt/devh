@@ -197,7 +197,7 @@ struct ContentView: View {
 
         // Seed every project's tracking data up front so overview percentages
         // are meaningful before the user opens each project detail screen.
-        let projectsToSeed = StudioProject.samples + storedProjects.map(\\.project)
+        let projectsToSeed = StudioProject.samples + storedProjects.map(\.project)
         var seenProjectIDs = Set<String>()
         for project in projectsToSeed where seenProjectIDs.insert(project.id).inserted {
             let milestones = storedMilestones.filter { $0.projectID == project.id }
