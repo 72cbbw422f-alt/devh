@@ -283,7 +283,7 @@ struct ProjectDetailView: View {
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             }
             .padding(18)
-            .frame(maxWidth: 850)
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
         .background(StudioTheme.background.ignoresSafeArea())
