@@ -15,20 +15,20 @@ final class ProjectTaskItem {
     var statusLabel: String {
         if statusRawValue == nil && isCompleted { return "Klar" }
         switch statusRawValue {
-        case "inProgress": "Pågår"
-        case "verified": "Verifierat klar"
-        case "completed": "Klar"
-        default: "Föreslagen"
+        case "inProgress": return "Pågår"
+        case "verified": return "Verifierat klar"
+        case "completed": return "Klar"
+        default: return "Föreslagen"
         }
     }
 
     var statusSymbol: String {
         if statusRawValue == nil && isCompleted { return "checkmark.circle.fill" }
         switch statusRawValue {
-        case "inProgress": "arrow.triangle.2.circlepath"
-        case "verified": "checkmark.seal.fill"
-        case "completed": "checkmark.circle.fill"
-        default: "circle"
+        case "inProgress": return "arrow.triangle.2.circlepath"
+        case "verified": return "checkmark.seal.fill"
+        case "completed": return "checkmark.circle.fill"
+        default: return "circle"
         }
     }
 
