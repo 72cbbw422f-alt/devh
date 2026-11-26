@@ -291,7 +291,7 @@ struct AssistantView: View {
                 .foregroundStyle(StudioTheme.text)
             Picker("Projekt", selection: $queueProjectFilter) {
                 Text("Alla projekt").tag("Alla projekt")
-                ForEach(Array(Set(byteWorkItems.map(\\.projectRepository))).sorted(), id: \\.self) { repository in
+                ForEach(Array(Set(byteWorkItems.map(\.projectRepository))).sorted(), id: \.self) { repository in
                     Text(repository.replacingOccurrences(of: "72cbbw422f-alt/", with: "")).tag(repository)
                 }
             }
