@@ -93,13 +93,13 @@ struct OpenAIEconomyView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("FÖRBRUKNING DENNA MÅNAD")
                 .font(.caption.bold()).tracking(0.8).foregroundStyle(StudioTheme.secondaryText)
-            Text(snapshot.monthToDateUSD, format: .currency(code: snapshot.currency))
+            Text(formattedCurrency(snapshot.monthToDateUSD, currency: snapshot.currency))
                 .font(.system(size: 36, weight: .bold, design: .rounded))
                 .foregroundStyle(StudioTheme.text)
             HStack {
                 Label("Sedan \(snapshot.monthStart)", systemImage: "calendar")
                 Spacer()
-                Text("USD").font(.caption.bold())
+                Text(snapshot.currency).font(.caption.bold())
             }
             .font(.caption).foregroundStyle(StudioTheme.muted)
         }
@@ -112,12 +112,12 @@ struct OpenAIEconomyView: View {
     private func budgetCard(_ snapshot: OpenAICostSnapshot) -> some View {
         sectionCard(title: "Månadsbudget", subtitle: "Lokal budget i USD · ändras bara på den här enheten") {
             HStack(alignment: .firstTextBaseline) {
-                Text(snapshot.monthToDateUSD, format: .currency(code: snapshot.currency))
+                Text(formattedCurrency(snapshot.monthToDateUSD, currency: snapshot.currency))
                     .font(.title2.bold().monospacedDigit()).foregroundStyle(StudioTheme.text)
                 Spacer()
                 Text("av")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
-                Text(monthlyBudgetUSD, format: .currency(code: "USD"))
+                Text(formattedCurrency(monthlyBudgetUSD, currency: "USD"))
                     .font(.headline.monospacedDigit()).foregroundStyle(StudioTheme.secondaryText)
             }
             ProgressView(value: budgetProgress)
@@ -137,7 +137,7 @@ struct OpenAIEconomyView: View {
                 Text("Budget")
                     .font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
                 Spacer()
-                Text(monthlyBudgetUSD, format: .currency(code: "USD"))
+                Text(formattedCurrency(monthlyBudgetUSD, currency: "USD"))
                     .font(.subheadline.monospacedDigit().weight(.semibold))
                     .foregroundStyle(StudioTheme.text)
             }
@@ -154,6 +154,8 @@ struct OpenAIEconomyView: View {
                 Text("Daglig statistik saknas i rapporten.")
                     .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
             } else {
+                let maximumDailyCost = snapshot.daily.map(\.costUSD).max() ?? 0
+                let chartUpperBound = max(maximumDailyCost * 1.25, 0.00001)
                 Chart(snapshot.daily) { item in
                     BarMark(
                         x: .value("Datum", chartDate(item.date)),
@@ -162,6 +164,7 @@ struct OpenAIEconomyView: View {
                     .foregroundStyle(StudioTheme.accent.gradient)
                     .cornerRadius(3)
                 }
+                .chartYScale(domain: 0...chartUpperBound)
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 5)) { value in
                         AxisValueLabel(format: .dateTime.day().month(.abbreviated))
@@ -169,9 +172,14 @@ struct OpenAIEconomyView: View {
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { value in
+                    AxisMarks(values: .automatic(desiredCount: 4)) { value in
                         AxisGridLine().foregroundStyle(StudioTheme.border)
-                        AxisValueLabel().foregroundStyle(StudioTheme.muted)
+                        AxisValueLabel {
+                            if let amount = value.as(Double.self) {
+                                Text(axisAmount(amount))
+                                    .foregroundStyle(StudioTheme.muted)
+                            }
+                        }
                     }
                 }
                 .frame(height: 170)
@@ -235,15 +243,34 @@ struct OpenAIEconomyView: View {
             Text(title).font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
-            Text(value, format: .currency(code: currency))
+            Text(formattedCurrency(value, currency: currency))
                 .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(StudioTheme.text)
         }
     }
 
+    private func formattedCurrency(_ value: Double, currency: String) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "sv_SE")
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        formatter.minimumFractionDigits = value > 0 && value < 0.01 ? 6 : 2
+        formatter.maximumFractionDigits = 6
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    private func axisAmount(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "sv_SE")
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 6
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
     private func projectLabel(_ id: String) -> String {
         if id == "unassigned" { return "Ej kopplat till projekt" }
-        return "Projekt · " + String(id.suffix(8))
+        return "Projekt-ID · …" + String(id.suffix(8))
     }
 
     private func chartDate(_ value: String) -> Date {
