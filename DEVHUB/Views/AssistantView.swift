@@ -354,9 +354,21 @@ struct AssistantView: View {
                                     .font(.caption)
                                     .foregroundStyle(StudioTheme.muted)
                             }
-                            if let rawURL = item.workflowURL, let url = URL(string: rawURL) {
-                                Link("Öppna körning", destination: url)
-                                    .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
+                            HStack(spacing: 14) {
+                                if let rawURL = item.workflowURL, let url = URL(string: rawURL) {
+                                    Link("Öppna körning", destination: url)
+                                        .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
+                                }
+                                Button {
+                                    selectedRepository = item.projectRepository
+                                    task = item.title
+                                    focusedField = .task
+                                    statusMessage = "Uppdraget har kopierats. Anpassa texten och skicka när du är redo."
+                                } label: {
+                                    Label("Återanvänd uppdrag", systemImage: "arrow.uturn.forward")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .tint(StudioTheme.accent)
                             }
                         }
                         Spacer(minLength: 0)
