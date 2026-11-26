@@ -123,6 +123,7 @@ struct AssistantView: View {
             if let token = GitHubTokenStore.read() {
                 githubToken = token
                 hasSavedToken = true
+                refreshQueueStatuses()
             }
         }
     }
@@ -297,6 +298,13 @@ struct AssistantView: View {
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
                             Text(item.createdAt, style: .relative)
                                 .font(.caption2).foregroundStyle(StudioTheme.muted)
+                            if let analysis = item.analysisText, !analysis.isEmpty {
+                                Text(analysis)
+                                    .font(.caption)
+                                    .foregroundStyle(StudioTheme.secondaryText)
+                                    .lineLimit(5)
+                                    .textSelection(.enabled)
+                            }
                             if let rawURL = item.workflowURL, let url = URL(string: rawURL) {
                                 Link("Öppna körning", destination: url)
                                     .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
@@ -321,7 +329,9 @@ struct AssistantView: View {
             statusMessage = "GitHub-token saknas. Spara den först för att uppdatera arbetskön."
             return
         }
-        let pendingItems = byteWorkItems.filter { $0.statusRawValue == "running" && $0.workflowRunID != nil }
+        let pendingItems = byteWorkItems.filter {
+            $0.workflowRunID != nil && ($0.statusRawValue == "running" || ($0.statusRawValue == "completed" && $0.analysisText == nil))
+        }
         guard !pendingItems.isEmpty else { return }
         isRefreshingQueue = true
         Task {
