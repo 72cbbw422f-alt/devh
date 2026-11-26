@@ -666,13 +666,11 @@ struct AssistantView: View {
                     do {
                         let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
                         let responseID = extractResponseID(from: text)
-                        if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
-                            applyUsage(from: text, to: item)
-                        }
                         let cleanText = cleanAnalysis(from: text, responseID: responseID)
                         await MainActor.run {
                             analysisText = cleanText
                             if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
+                                applyUsage(from: text, to: item)
                                 item.analysisText = cleanText
                                 item.conversationResponseID = responseID
                                 item.updatedAt = .now
