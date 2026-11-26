@@ -99,13 +99,18 @@ private actor GitHubRepositoryCache {
         let value: CachedGitHubRepository
         let savedAt: Date
     }
-    private struct WorkItemsEntry {\n        let value: [GitHubOpenWorkItem]\n        let savedAt: Date\n    }\n    private struct WorkflowEntry {
+    private struct WorkItemsEntry {
+        let value: [GitHubOpenWorkItem]
+        let savedAt: Date
+    }
+    private struct WorkflowEntry {
         let value: GitHubWorkflowRunSnapshot?
         let savedAt: Date
     }
 
     private var entries: [String: Entry] = [:]
-    private var workflowEntries: [String: WorkflowEntry] = [:]\n    private var workItemsEntries: [String: WorkItemsEntry] = [:]
+    private var workflowEntries: [String: WorkflowEntry] = [:]
+    private var workItemsEntries: [String: WorkItemsEntry] = [:]
     private let lifetime: TimeInterval = 300
 
     func value(for key: String) -> CachedGitHubRepository? {
