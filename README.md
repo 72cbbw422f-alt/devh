@@ -32,6 +32,8 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - [x] Persist project records and task checklists locally with SwiftData
 - [x] Per-project milestone roadmap and interactive task checklist (task completion and custom tasks persisted locally with SwiftData)
 - [x] GitHub repository deep links
+- [x] Read-only GitHub API client for public repository metadata and latest commit
+- [x] Live repository status on project detail pages, including issues, stars, forks, default branch and latest push
 - [x] Native AI assistant workspace UI
 - [x] GitHub Actions unsigned IPA build workflow
 - [x] Serverless GitHub Actions workflow for read-only AI project analysis
