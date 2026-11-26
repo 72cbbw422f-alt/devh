@@ -11,12 +11,18 @@ settings:
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
     INFOPLIST_KEY_UIUserInterfaceStyle: Light
     GENERATE_INFOPLIST_FILE: YES
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: 0.9.19
 targets:
   DEVHUB:
     type: application
     platform: iOS
     sources:
       - path: DEVHUB
+    dependencies:
+      - package: ZIPFoundation
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.niklas.devhub
