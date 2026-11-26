@@ -296,6 +296,11 @@ struct AssistantView: View {
                 }
             }
             .pickerStyle(.menu).tint(StudioTheme.accent)
+            HStack(spacing: 8) {
+                queueMetric(title: "Aktiva", count: byteWorkItems.filter { $0.statusRawValue == "queued" || $0.statusRawValue == "running" }.count, color: StudioTheme.accent)
+                queueMetric(title: "Klara", count: byteWorkItems.filter { $0.statusRawValue == "completed" }.count, color: StudioTheme.accentCyan)
+                queueMetric(title: "Fel", count: byteWorkItems.filter { $0.statusRawValue == "failed" }.count, color: .red)
+            }
             Picker("Visa", selection: $queueFilter) {
                 Text("Alla").tag("Alla")
                 Text("Aktiva").tag("Aktiva")
@@ -430,6 +435,20 @@ struct AssistantView: View {
                 statusMessage = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
             }
         }
+    }
+
+    private func queueMetric(title: String, count: Int, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(count.formatted())
+                .font(.headline.monospacedDigit())
+                .foregroundStyle(color)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(StudioTheme.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var filteredQueueItems: [ByteWorkItem] {
