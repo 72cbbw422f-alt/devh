@@ -25,8 +25,8 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - [x] Initial six-project portfolio
 - [x] Overview hero, project count and average planned progress
 - [x] Premium project cards with status and progress indicators
-- [x] Project list and project detail screens
-- [x] Per-project milestone roadmap and interactive task checklist (local, in-memory prototype)
+- [x] Project list and project detail screens\n- [x] Create custom projects with name, description, platform, category, status, accent color and optional GitHub repository\n- [x] Edit existing project metadata\n- [x] Archive and restore projects without deleting their data\n- [x] Persist project records and task checklists locally with SwiftData
+- [x] Per-project milestone roadmap and interactive task checklist (task completion and custom tasks persisted locally with SwiftData)
 - [x] GitHub repository deep links
 - [x] Native AI assistant workspace UI
 - [x] GitHub Actions unsigned IPA build workflow
@@ -35,7 +35,7 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 ## Project portfolio
 Familjen, Watchlist, Antikspanaren, Regnvakt, Hemma and DEVHUB.
 
-Project progress values and initial milestone/task examples are planning data until live repository and persistent task synchronization is implemented. Task checkmarks currently reset when the detail screen is recreated; persistent storage is a planned next step.
+Project progress values and milestone examples are still planning data until live repository synchronization is implemented. Project records and task checklists are stored locally with SwiftData. GitHub repository metadata and cross-device project synchronization are not yet connected. Custom projects can be added from the plus button in the Projects tab; existing projects can be edited or archived with swipe actions, and archived projects can be restored from the archive view.
 
 ## Serverless AI assistant architecture
 No separately hosted backend or database is required for the first version:
@@ -58,7 +58,7 @@ The iOS app keeps the GitHub fine-grained personal access token in the iOS Keych
 The initial AI workflow is read-only. Later code-writing support will use a separate workflow that creates a branch and pull request. DEVHUB will require explicit approval before any code-writing run, merge, release or other consequential action. No automatic push to the default branch.
 
 ## Roadmap
-1. Persistent project/task/milestone storage.
+1. Persistent milestone editing and optional iCloud synchronization.
 2. Shared GitHub client and live repository status, commits, branches, PRs, issues, releases and CI.
 3. Connect roadmap and project health to real repository signals.
 4. Approved code changes on isolated branches with pull requests.
