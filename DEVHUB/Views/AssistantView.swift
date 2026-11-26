@@ -349,6 +349,26 @@ struct AssistantView: View {
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(StudioTheme.accentCyan)
                             }
+                            if let patchPreview = item.patchPreview, !patchPreview.isEmpty {
+                                DisclosureGroup {
+                                    ScrollView(.horizontal) {
+                                        Text(patchPreview)
+                                            .font(.system(.caption2, design: .monospaced))
+                                            .foregroundStyle(StudioTheme.secondaryText)
+                                            .textSelection(.enabled)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(9)
+                                    }
+                                    .background(StudioTheme.background, in: RoundedRectangle(cornerRadius: 8))
+                                } label: {
+                                    Label("Granska kodförslag", systemImage: "doc.text.magnifyingglass")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(StudioTheme.accentCyan)
+                                }
+                                Text("Förhandsvisning – ingen kod har ändrats eller godkänts för incheckning.")
+                                    .font(.caption2)
+                                    .foregroundStyle(StudioTheme.muted)
+                            }
                             if let analysis = item.analysisText, !analysis.isEmpty {
                                 Text(analysis)
                                     .font(.caption)
@@ -491,6 +511,7 @@ struct AssistantView: View {
                             let responseID = extractResponseID(from: analysis)
                             applyUsage(from: analysis, to: item)
                             item.analysisText = cleanAnalysis(from: analysis, responseID: responseID)
+                            item.patchPreview = extractPatchPreview(from: analysis)
                             item.conversationResponseID = responseID ?? item.conversationResponseID
                             recoveredCount += 1
                             modelContext.insert(DEVHUBNotification(
@@ -510,6 +531,20 @@ struct AssistantView: View {
                 statusMessage = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
             }
         }
+    }
+
+    private func extractPatchPreview(from text: String) -> String? {
+        let pattern = #"(?is)```(?:diff|patch)\s*\n(.*?)\n```"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(text.startIndex..., in: text)
+        let matches = expression.matches(in: text, range: range)
+        let previews = matches.compactMap { match -> String? in
+            guard match.numberOfRanges > 1,
+                  let range = Range(match.range(at: 1), in: text) else { return nil }
+            let value = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.isEmpty ? nil : value
+        }
+        return previews.isEmpty ? nil : previews.joined(separator: "\n\n")
     }
 
     private func extractResponseID(from text: String) -> String? {
@@ -672,6 +707,7 @@ struct AssistantView: View {
                             if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                                 applyUsage(from: text, to: item)
                                 item.analysisText = cleanText
+                                item.patchPreview = extractPatchPreview(from: text)
                                 item.conversationResponseID = responseID
                                 item.updatedAt = .now
                             }
