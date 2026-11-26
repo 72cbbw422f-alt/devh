@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 enum StudioTab: String, CaseIterable, Identifiable {
-    case overview="Översikt", projects="Projekt", assistant="Assistent", activity="Utveckling", roadmap="Roadmap", revenue="Ekonomi", analytics="Analys"
+    case overview="Översikt", projects="Projekt", assistant="Assistent", activity="Utveckling", roadmap="Roadmap", revenue="Ekonomi", analytics="Analys", notifications="Notiser"
     var id:String { rawValue }
     var symbol:String {
         switch self {
@@ -13,6 +13,7 @@ enum StudioTab: String, CaseIterable, Identifiable {
         case .roadmap:"map"
         case .revenue:"chart.line.uptrend.xyaxis"
         case .analytics:"chart.bar"
+        case .notifications:"bell"
         }
     }
 }
@@ -47,12 +48,14 @@ struct ContentView: View {
             }.tabItem { Label(StudioTab.projects.rawValue,systemImage:StudioTab.projects.symbol) }.tag(StudioTab.projects)
             NavigationStack { AssistantView() }
                 .tabItem { Label(StudioTab.assistant.rawValue,systemImage:StudioTab.assistant.symbol) }.tag(StudioTab.assistant)
-            ForEach([StudioTab.activity,.roadmap,.revenue,.analytics]) { tab in
+            ForEach([StudioTab.activity,.roadmap,.revenue,.analytics,.notifications]) { tab in
                 NavigationStack {
                     if tab == .roadmap {
                         RoadmapView(projects: projects) { selectedProject = $0 }
                     } else if tab == .analytics {
                         AnalyticsView()
+                    } else if tab == .notifications {
+                        NotificationCenterView()
                     } else {
                         PlaceholderView(tab: tab)
                     }
