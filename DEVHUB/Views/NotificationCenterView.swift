@@ -36,26 +36,7 @@ struct NotificationCenterView: View {
                     .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 16))
                 } else {
                     ForEach(notifications) { item in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: icon(for: item.category))
-                                .foregroundStyle(StudioTheme.accent)
-                                .frame(width: 36, height: 36)
-                                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.title).font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
-                                Text(item.message).font(.caption).foregroundStyle(StudioTheme.secondaryText)
-                                Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.caption2).foregroundStyle(StudioTheme.muted)
-                            }
-                            Spacer()
-                            if !item.isRead {
-                                Circle().fill(StudioTheme.accent).frame(width: 7, height: 7)
-                            }
-                        }
-                        .padding(13)
-                        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 13))
-                        .contentShape(Rectangle())
-                        .onTapGesture { item.isRead = true }
+                        notificationRow(item)
                     }
                 }
             }.padding()
@@ -63,6 +44,41 @@ struct NotificationCenterView: View {
         .background(StudioTheme.background.ignoresSafeArea())
         .navigationTitle("Notiser")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private func notificationRow(_ item: DEVHUBNotification) -> some View {
+        let content = HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon(for: item.category))
+                .foregroundStyle(StudioTheme.accent)
+                .frame(width: 36, height: 36)
+                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title).font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                Text(item.message).font(.caption).foregroundStyle(StudioTheme.secondaryText)
+                Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption2).foregroundStyle(StudioTheme.muted)
+            }
+            Spacer()
+            if !item.isRead {
+                Circle().fill(StudioTheme.accent).frame(width: 7, height: 7)
+            }
+            if item.destinationURL != nil {
+                Image(systemName: "arrow.up.right").font(.caption2).foregroundStyle(StudioTheme.muted)
+            }
+        }
+        .padding(13)
+        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 13))
+        .contentShape(Rectangle())
+
+        if let rawURL = item.destinationURL, let url = URL(string: rawURL) {
+            Link(destination: url) {
+                content
+            }
+            .simultaneousGesture(TapGesture().onEnded { item.isRead = true })
+        } else {
+            content.onTapGesture { item.isRead = true }
+        }
     }
 
     private func icon(for category: String) -> String {
