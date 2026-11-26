@@ -20,7 +20,6 @@ struct ProjectCard: View {
                     .padding(.vertical, 5)
                     .background(statusColor.opacity(0.13), in: Capsule())
             }
-
             VStack(alignment: .leading, spacing: 4) {
                 Text(project.name)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -32,10 +31,8 @@ struct ProjectCard: View {
                     .multilineTextAlignment(.leading)
                     .frame(minHeight: 28, alignment: .topLeading)
             }
-
             HStack {
-                Text(project.platform + " · " + project.category)
-                    .lineLimit(1)
+                Text(project.platform + " · " + project.category).lineLimit(1)
                 Spacer(minLength: 4)
                 Text("\(Int(project.progress * 100))%")
                     .fontWeight(.bold)
@@ -43,28 +40,20 @@ struct ProjectCard: View {
             }
             .font(.system(size: 9))
             .foregroundStyle(StudioTheme.muted)
-
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule().fill(StudioTheme.elevated)
                     Capsule()
-                        .fill(LinearGradient(
-                            colors: [Color(hex: project.accent), StudioTheme.accent],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ))
+                        .fill(LinearGradient(colors: [Color(hex: project.accent), StudioTheme.accent], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(5, proxy.size.width * min(max(project.progress, 0), 1)))
                 }
             }
             .frame(height: 5)
-
             HStack(spacing: 5) {
                 Image(systemName: "arrow.up.right.square")
-                Text(project.repository)
-                    .lineLimit(1)
+                Text(project.repository).lineLimit(1)
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .bold))
+                Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold))
             }
             .font(.system(size: 9, design: .monospaced))
             .foregroundStyle(StudioTheme.muted)
@@ -73,11 +62,7 @@ struct ProjectCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 16)
-                .fill(LinearGradient(
-                    colors: [StudioTheme.surface, StudioTheme.surface.opacity(0.82)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
+                .fill(LinearGradient(colors: [StudioTheme.surface, StudioTheme.surface.opacity(0.82)], startPoint: .topLeading, endPoint: .bottomTrailing))
         }
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(StudioTheme.border, lineWidth: 1))
     }
@@ -105,14 +90,9 @@ struct ProjectListView: View {
                         .frame(width: 40, height: 40)
                         .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(project.name)
-                            .font(.headline)
-                            .foregroundStyle(StudioTheme.text)
-                        Text(project.repository)
-                            .font(.caption)
-                            .foregroundStyle(StudioTheme.muted)
-                        ProgressView(value: project.progress)
-                            .tint(StudioTheme.accent)
+                        Text(project.name).font(.headline).foregroundStyle(StudioTheme.text)
+                        Text(project.repository).font(.caption).foregroundStyle(StudioTheme.muted)
+                        ProgressView(value: project.progress).tint(Color(hex: project.accent))
                     }
                     Spacer()
                     Text("\(Int(project.progress * 100))%")
@@ -132,30 +112,101 @@ struct ProjectListView: View {
 
 struct ProjectDetailView: View {
     let project: StudioProject
+    @State private var completedTasks: Set<String> = []
+
+    private var milestones: [String] {
+        switch project.id {
+        case "familjen": ["Grundstruktur och navigering", "Familjekalender", "Delade inköpslistor", "Inbjudan och synkronisering"]
+        case "watchlist": ["Grundläggande bibliotek", "Progress-lista", "TMDB och metadata", "Import och synkronisering"]
+        case "antikspanaren": ["Datamodell och sök", "Auktionskällor", "Bevakningar", "Pris- och objekthistorik"]
+        case "regnvakt": ["Väderöversikt", "SMHI-varningar", "Radar och kartlager", "Bakgrundsnotiser"]
+        case "hemma": ["Appskal och rum", "HomeKit-anslutning", "Tillbehör och scener", "Automationer"]
+        default: ["Projektöversikt och AI", "GitHub-arbetsflöde", "Milstolpar och uppgifter", "Byggstatus och distribution"]
+        }
+    }
+
+    private var tasks: [String] {
+        switch project.id {
+        case "familjen": ["Färdigställ kalenderflödet", "Verifiera delade listor", "Testa inbjudningsflödet"]
+        case "watchlist": ["Förfina progress-listan", "Kontrollera metadataimport", "Testa statusfilter"]
+        case "antikspanaren": ["Kartlägg källornas API:er", "Normalisera objektsdata", "Planera bevakningsmotor"]
+        case "regnvakt": ["Felsök varningsmatchning", "Verifiera radarens tidsstämplar", "Testa notiser i bakgrunden"]
+        case "hemma": ["Verifiera HomeKit-entitlements", "Bygg grundläggande rumsvy", "Testa tillbehörsstatus"]
+        default: ["Färdigställ projektdetaljer", "Koppla GitHub-status", "Dokumentera bygg- och releaseflödet"]
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 ProjectCard(project: project)
-                SectionHeading(eyebrow: "NÄSTA MILSTOLPE", title: project.nextMilestone)
+                VStack(alignment: .leading, spacing: 12) {
+                    SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
+                    ForEach(Array(milestones.enumerated()), id: \.offset) { index, milestone in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle().fill(index == 0 ? StudioTheme.accent.opacity(0.2) : StudioTheme.elevated).frame(width: 30, height: 30)
+                                if index == 0 {
+                                    Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(StudioTheme.accentCyan)
+                                } else {
+                                    Text("\(index + 1)").font(.caption.bold()).foregroundStyle(StudioTheme.muted)
+                                }
+                            }
+                            Text(milestone).font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                            Spacer()
+                            if index == 0 { Text("BAS").font(.system(size: 8, weight: .bold)).foregroundStyle(StudioTheme.accentCyan) }
+                        }
+                        if index < milestones.count - 1 { Divider().overlay(StudioTheme.border).padding(.leading, 42) }
+                    }
+                }
+                .padding(16)
+                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
+                .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        SectionHeading(eyebrow: "ATT GÖRA", title: "Arbetslista")
+                        Spacer()
+                        Text("\(completedTasks.count)/\(tasks.count)")
+                            .font(.caption.monospacedDigit().bold()).foregroundStyle(StudioTheme.accentCyan)
+                    }
+                    ForEach(tasks, id: \.self) { task in
+                        Button {
+                            if completedTasks.contains(task) { completedTasks.remove(task) }
+                            else { completedTasks.insert(task) }
+                        } label: {
+                            HStack(spacing: 11) {
+                                Image(systemName: completedTasks.contains(task) ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3).foregroundStyle(completedTasks.contains(task) ? StudioTheme.accentCyan : StudioTheme.muted)
+                                Text(task).font(.subheadline).foregroundStyle(completedTasks.contains(task) ? StudioTheme.muted : StudioTheme.text)
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(16)
+                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
+                .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("GitHub-repository", systemImage: "chevron.left.forwardslash.chevron.right")
-                        .font(.headline)
-                        .foregroundStyle(StudioTheme.text)
+                    SectionHeading(eyebrow: "KÄLLKOD", title: "GitHub")
                     Text("72cbbw422f-alt/\(project.repository)")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(StudioTheme.muted)
-                    Link("Öppna på GitHub", destination: URL(string: "https://github.com/72cbbw422f-alt/\(project.repository)")!)
-                        .font(.subheadline.weight(.semibold))
-                        .tint(StudioTheme.accent)
+                        .font(.system(.body, design: .monospaced)).foregroundStyle(StudioTheme.secondaryText)
+                    Link("Öppna repository", destination: URL(string: "https://github.com/72cbbw422f-alt/\(project.repository)")!)
+                        .font(.subheadline.weight(.semibold)).tint(StudioTheme.accent)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
-                .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
-                IntegrationEmptyState()
+                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
+                .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+                Text("Milstolpar och uppgifter är initialt redigerbara lokala arbetsunderlag. GitHub-synkronisering och beständig lagring kopplas in separat.")
+                    .font(.caption).foregroundStyle(StudioTheme.muted)
             }
             .padding(18)
+            .frame(maxWidth: 850)
+            .frame(maxWidth: .infinity)
         }
         .background(StudioTheme.background.ignoresSafeArea())
         .navigationTitle(project.name)
