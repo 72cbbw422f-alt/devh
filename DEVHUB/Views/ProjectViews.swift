@@ -162,3 +162,156 @@ struct ProjectListView: View {
         }
     }
 }
+
+struct ProjectDetailView: View {
+    let project: StudioProject
+    @Environment(\.modelContext) private var modelContext
+    @Query private var storedTasks: [ProjectTaskItem]
+    @State private var newTaskTitle = ""
+
+    init(project: StudioProject) {
+        self.project = project
+        let projectID = project.id
+        _storedTasks = Query(
+            filter: #Predicate<ProjectTaskItem> { $0.projectID == projectID },
+            sort: \ProjectTaskItem.createdAt
+        )
+    }
+
+    private var milestones: [String] {
+        switch project.id {
+        case "familjen": ["Grundstruktur och navigering", "Familjekalender", "Delade inköpslistor", "Inbjudan och synkronisering"]
+        case "watchlist": ["Grundläggande bibliotek", "Progress-lista", "TMDB och metadata", "Import och synkronisering"]
+        case "antikspanaren": ["Datamodell och sök", "Auktionskällor", "Bevakningar", "Pris- och objekthistorik"]
+        case "regnvakt": ["Väderöversikt", "SMHI-varningar", "Radar och kartlager", "Bakgrundsnotiser"]
+        case "hemma": ["Appskal och rum", "HomeKit-anslutning", "Tillbehör och scener", "Automationer"]
+        default: ["Projektöversikt och AI", "GitHub-arbetsflöde", "Milstolpar och uppgifter", "Byggstatus och distribution"]
+        }
+    }
+
+    private var suggestedTasks: [String] {
+        switch project.id {
+        case "familjen": ["Färdigställ kalenderflödet", "Verifiera delade listor", "Testa inbjudningsflödet"]
+        case "watchlist": ["Förfina progress-listan", "Kontrollera metadataimport", "Testa statusfilter"]
+        case "antikspanaren": ["Kartlägg källornas API:er", "Normalisera objektsdata", "Planera bevakningsmotor"]
+        case "regnvakt": ["Felsök varningsmatchning", "Verifiera radarens tidsstämplar", "Testa notiser i bakgrunden"]
+        case "hemma": ["Verifiera HomeKit-entitlements", "Bygg grundläggande rumsvy", "Testa tillbehörsstatus"]
+        default: ["Färdigställ projektdetaljer", "Koppla GitHub-status", "Dokumentera bygg- och releaseflödet"]
+        }
+    }
+
+    private var completedCount: Int { storedTasks.filter(\.isCompleted).count }\n    private var githubRepositoryPath: String { project.repository.contains("/") ? project.repository : "72cbbw422f-alt/\\(project.repository)" }\n    private var githubRepositoryPath: String { project.repository.contains("/") ? project.repository : "72cbbw422f-alt/\\(project.repository)" }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                ProjectCard(project: project)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    SectionHeading(eyebrow: "PROJEKTETS RIKTNING", title: "Milstolpar")
+                    ForEach(Array(milestones.enumerated()), id: \.offset) { index, milestone in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle().fill(index == 0 ? StudioTheme.accent.opacity(0.2) : StudioTheme.elevated).frame(width: 30, height: 30)
+                                if index == 0 {
+                                    Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(StudioTheme.accentCyan)
+                                } else {
+                                    Text("\(index + 1)").font(.caption.bold()).foregroundStyle(StudioTheme.muted)
+                                }
+                            }
+                            Text(milestone).font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                            Spacer()
+                            if index == 0 { Text("BAS").font(.system(size: 8, weight: .bold)).foregroundStyle(StudioTheme.accentCyan) }
+                        }
+                        if index < milestones.count - 1 { Divider().overlay(StudioTheme.border).padding(.leading, 42) }
+                    }
+                }
+                .padding(16)
+                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
+                .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+
+                VStack(alignment: .leading, spacing: 13) {
+                    HStack {
+                        SectionHeading(eyebrow: "ATT GÖRA", title: "Arbetslista")
+                        Spacer()
+                        Text("\(completedCount)/\(storedTasks.count)")
+                            .font(.caption.monospacedDigit().bold()).foregroundStyle(StudioTheme.accentCyan)
+                    }
+                    if storedTasks.isEmpty {
+                        Text("Förbereder projektets första uppgifter…")
+                            .font(.caption).foregroundStyle(StudioTheme.muted)
+                    } else {
+                        ForEach(storedTasks) { task in
+                            Button { task.isCompleted.toggle() } label: {
+                                HStack(spacing: 11) {
+                                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .font(.title3).foregroundStyle(task.isCompleted ? StudioTheme.accentCyan : StudioTheme.muted)
+                                    Text(task.title)
+                                        .font(.subheadline)
+                                        .foregroundStyle(task.isCompleted ? StudioTheme.muted : StudioTheme.text)
+                                        .strikethrough(task.isCompleted, color: StudioTheme.muted)
+                                    Spacer()
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    HStack(spacing: 9) {
+                        TextField("Lägg till en uppgift…", text: $newTaskTitle)
+                            .font(.subheadline)
+                            .textInputAutocapitalization(.sentences)
+                            .padding(11)
+                            .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+                        Button(action: addTask) {
+                            Image(systemName: "plus")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                                .frame(width: 42, height: 42)
+                                .background(StudioTheme.accent, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .disabled(newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+                .padding(16)
+                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
+                .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionHeading(eyebrow: "KÄLLKOD", title: "GitHub")
+                    Text("72cbbw422f-alt/\(project.repository)")
+                        .font(.system(.body, design: .monospaced)).foregroundStyle(StudioTheme.secondaryText)
+                    Link("Öppna repository", destination: URL(string: "https://github.com/72cbbw422f-alt/\(project.repository)")!)
+                        .font(.subheadline.weight(.semibold)).tint(StudioTheme.accent)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 17))
+                .overlay(RoundedRectangle(cornerRadius: 17).stroke(StudioTheme.border, lineWidth: 1))
+                Text("Uppgifter sparas lokalt på enheten med SwiftData. GitHub-synkronisering av milstolpar planeras separat.")
+                    .font(.caption).foregroundStyle(StudioTheme.muted)
+            }
+            .padding(18)
+            .frame(maxWidth: 850)
+            .frame(maxWidth: .infinity)
+        }
+        .background(StudioTheme.background.ignoresSafeArea())
+        .navigationTitle(project.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { seedTasksIfNeeded() }
+    }
+
+    private func addTask() {
+        let title = newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        modelContext.insert(ProjectTaskItem(projectID: project.id, title: title))
+        newTaskTitle = ""
+    }
+
+    private func seedTasksIfNeeded() {
+        guard storedTasks.isEmpty else { return }
+        for title in suggestedTasks {
+            modelContext.insert(ProjectTaskItem(projectID: project.id, title: title))
+        }
+    }
+}
