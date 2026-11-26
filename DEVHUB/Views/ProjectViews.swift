@@ -169,6 +169,7 @@ struct ProjectDetailView: View {
     @Query private var storedTasks: [ProjectTaskItem]
     @Query private var storedMilestones: [ProjectMilestoneItem]
     @State private var newTaskTitle = ""
+    @State private var selectedMilestoneID = ""
 
     init(project: StudioProject) {
         self.project = project
@@ -306,6 +307,15 @@ struct ProjectDetailView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    if !storedMilestones.isEmpty {
+                        Picker("Koppla till milstolpe", selection: $selectedMilestoneID) {
+                            ForEach(storedMilestones) { milestone in
+                                Text(milestone.title).tag(milestone.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .tint(StudioTheme.accentCyan)
+                    }
                     HStack(spacing: 9) {
                         TextField("Lägg till en uppgift…", text: $newTaskTitle)
                             .font(.subheadline)
@@ -343,7 +353,7 @@ struct ProjectDetailView: View {
     private func addTask() {
         let title = newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
-        modelContext.insert(ProjectTaskItem(projectID: project.id, title: title))
+        modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, milestoneID: selectedMilestoneID.isEmpty ? storedMilestones.first?.id : selectedMilestoneID))
         newTaskTitle = ""
     }
 
