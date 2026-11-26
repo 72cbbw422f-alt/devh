@@ -22,7 +22,7 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 ## Current foundation
 - [x] Native SwiftUI app shell and tab navigation
 - [x] Midnight / Indigo Premium visual system
-- [x] Initial six-project portfolio
+- [x] Initial five-project portfolio
 - [x] Overview hero, project count and average planned progress
 - [x] Premium project cards with status and progress indicators
 - [x] Project list and project detail screens
@@ -41,7 +41,7 @@ DEVHUB is a SwiftUI app for tracking every project regardless of distribution ch
 - [x] Serverless GitHub Actions workflow for read-only AI project analysis
 
 ## Project portfolio
-Familjen, Watchlist, Antikspanaren, Regnvakt, Hemma and DEVHUB.
+Familjen, Antikspanaren, Regnvakt, Hemma and DEVHUB.
 
 Project progress values and milestone examples are still planning data until live repository synchronization is implemented. Project records and task checklists are stored locally with SwiftData. GitHub repository metadata and cross-device project synchronization are not yet connected. Custom projects can be added from the plus button in the Projects tab; existing projects can be edited or archived with swipe actions, and archived projects can be restored from the archive view.
 
