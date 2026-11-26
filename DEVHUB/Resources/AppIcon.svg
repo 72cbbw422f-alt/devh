@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#080D1F"/><stop offset="1" stop-color="#111A35"/></linearGradient>
+ <linearGradient id="core" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9B8CFF"/><stop offset=".52" stop-color="#7164F2"/><stop offset="1" stop-color="#398BFF"/></linearGradient>
+ <linearGradient id="line" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#45C6D9"/><stop offset=".5" stop-color="#7164F2"/><stop offset="1" stop-color="#398BFF"/></linearGradient>
+ <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="24" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<circle cx="512" cy="512" r="300" fill="#7164F2" opacity=".08"/>
+<g fill="none" stroke="url(#line)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" opacity=".95">
+ <path d="M512 512 L512 300 Q512 250 462 250 L330 250"/>
+ <path d="M512 512 L720 512 Q770 512 770 462 L770 370"/>
+ <path d="M512 512 L512 700 Q512 750 462 750 L350 750"/>
+ <path d="M512 512 L700 700"/>
+</g>
+<g filter="url(#glow)">
+ <circle cx="512" cy="512" r="112" fill="url(#core)"/>
+ <circle cx="330" cy="250" r="54" fill="#45C6D9"/>
+ <circle cx="770" cy="370" r="54" fill="#398BFF"/>
+ <circle cx="350" cy="750" r="54" fill="#8B7CFF"/>
+ <circle cx="700" cy="700" r="48" fill="#7164F2"/>
+</g>
+<circle cx="512" cy="512" r="45" fill="#F3F5FF" opacity=".95"/>
+<circle cx="512" cy="512" r="160" fill="none" stroke="#A99FFF" stroke-width="3" opacity=".18"/>
+</svg>
