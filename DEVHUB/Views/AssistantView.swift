@@ -49,11 +49,22 @@ struct AssistantView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("BYTE · DEVHUB AI", systemImage: "sparkles")
-                        .font(.caption.bold()).foregroundStyle(StudioTheme.accent)
-                    Text("Byte är redo att jobba")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(StudioTheme.text)
+                    HStack(spacing: 12) {
+                        Image("ByteMascot")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 58, height: 58)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .accessibilityLabel("Byte, DEVHUBs AI-maskot")
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("BYTE · DEVHUB AI")
+                                .font(.caption.bold())
+                                .foregroundStyle(StudioTheme.accent)
+                            Text("Byte är redo att jobba")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundStyle(StudioTheme.text)
+                        }
+                    }
                     Text("Välj ett projekt och ge Byte ett uppdrag.")
                         .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
                 }
