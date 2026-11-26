@@ -213,7 +213,7 @@ struct AssistantView: View {
             }
             Link("Skapa token på GitHub", destination: URL(string: "https://github.com/settings/personal-access-tokens")!)
                 .font(.caption.weight(.medium))
-            Text("Token ska endast ha åtkomst till devh och behörigheten Actions: Read and write.")
+            Text("App-token: endast devh med Actions: Read and write. Skrivtokenen PROJECTS_GITHUB_TOKEN ligger separat som GitHub Secret och ska bara ha skrivåtkomst till projektens Contents och Pull requests.")
                 .font(.caption).foregroundStyle(StudioTheme.secondaryText)
         }
         .padding(15).frame(maxWidth: .infinity, alignment: .leading)
@@ -686,10 +686,10 @@ struct AssistantView: View {
                 await MainActor.run {
                     item.patchStatusRawValue = "dispatched"; item.updatedAt = .now
                     statusMessage = "Förslaget är godkänt och skickat till GitHub. Där kontrolleras grundversionen och diffen innan en separat branch och PR skapas."
-                    modelContext.insert(DEVHUBNotification(title: "Byte-förslag godkänt", message: "GitHub har tagit emot det godkända förslaget för \\(item.projectRepository).", category: "assistant"))
+                    modelContext.insert(DEVHUBNotification(title: "Byte-förslag godkänt", message: "GitHub har tagit emot det godkända förslaget för \(item.projectRepository).", category: "assistant"))
                 }
             } catch {
-                await MainActor.run { item.patchStatusRawValue = "pending"; statusMessage = "Kunde inte skicka godkännandet: \\(error.localizedDescription)" }
+                await MainActor.run { item.patchStatusRawValue = "pending"; statusMessage = "Kunde inte skicka godkännandet: \(error.localizedDescription)" }
             }
         }
     }
