@@ -12,6 +12,15 @@ final class ByteWorkItem {
     var workflowURL: String?
     var workflowRunID: Int?
     var analysisText: String?
+    var workModeRawValue: String
+
+    var workModeLabel: String {
+        switch workModeRawValue {
+        case "collaborate": "Samarbeta"
+        case "autopilot": "Autopilot"
+        default: "Godkänn först"
+        }
+    }
 
     var statusLabel: String {
         switch statusRawValue {
@@ -22,7 +31,7 @@ final class ByteWorkItem {
         }
     }
 
-    init(projectRepository: String, title: String) {
+    init(projectRepository: String, title: String, workMode: String = "approval") {
         id = UUID().uuidString
         self.projectRepository = projectRepository
         self.title = title
@@ -32,5 +41,6 @@ final class ByteWorkItem {
         workflowURL = nil
         workflowRunID = nil
         analysisText = nil
+        workModeRawValue = workMode
     }
 }
