@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 private struct GitHubActivityItem: Identifiable {
     let id: String
@@ -16,6 +17,8 @@ private struct GitHubActivityItem: Identifiable {
 
 struct GitHubActivityFeedView: View {
     let projects: [StudioProject]
+    @Environment(\.modelContext) private var modelContext
+    @AppStorage("github.activity.seenKeys") private var seenKeysStorage = ""
     @State private var items: [GitHubActivityItem] = []
     @State private var isLoading = false
     @State private var hasLoaded = false
@@ -241,6 +244,7 @@ struct GitHubActivityFeedView: View {
         }
 
         var latest: [GitHubActivityItem] = []
+        var observedEventKeys: Set<String> = []
         failedProjects = []
         let service = GitHubRepositoryService()
         for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -260,6 +264,12 @@ struct GitHubActivityFeedView: View {
                 } catch {
                     openWorkItems = []
                     warnings.append("Issues/PR kunde inte hämtas")
+                }
+                if let workflow, workflow.status == "completed" {
+                    observedEventKeys.insert("workflow:\(project.repository):\(workflow.id):\(workflow.conclusion ?? "unknown")")
+                }
+                for work in openWorkItems {
+                    observedEventKeys.insert("work:\(project.repository):\(work.number):\(work.updatedAt.timeIntervalSince1970)")
                 }
                 let workflowSucceeded = workflow?.conclusion == "success"
                 let workflowLabel = workflow.map { run in
@@ -284,6 +294,41 @@ struct GitHubActivityFeedView: View {
                 failedProjects.append(project.name)
                 continue
             }
+        }
+        let previousKeys = Set(seenKeysStorage.split(separator: "\n").map(String.init))
+        if previousKeys.isEmpty {
+            // First successful scan establishes a baseline; it must not alert on old activity.
+            seenKeysStorage = observedEventKeys.sorted().joined(separator: "\n")
+        } else {
+            let newKeys = observedEventKeys.subtracting(previousKeys)
+            for key in newKeys {
+                if key.hasPrefix("workflow:") {
+                    let parts = key.split(separator: ":")
+                    let repository = parts.count > 1 ? String(parts[1]) : "GitHub"
+                    let conclusion = parts.last.map(String.init) ?? "unknown"
+                    let succeeded = conclusion == "success"
+                    modelContext.insert(DEVHUBNotification(
+                        title: succeeded ? "Ny byggning lyckades" : "En byggning behöver kontrolleras",
+                        message: "\(repository): GitHub Actions avslutades med resultatet \(conclusion).",
+                        category: succeeded ? "workflow" : "issue",
+                        sourceKey: key
+                    ))
+                } else if key.hasPrefix("work:") {
+                    let parts = key.split(separator: ":")
+                    let repository = parts.count > 1 ? String(parts[1]) : "GitHub"
+                    let number = parts.count > 2 ? String(parts[2]) : "?"
+                    let work = latest.flatMap(\.openWorkItems).first { String($0.number) == number }
+                    modelContext.insert(DEVHUBNotification(
+                        title: work?.pullRequest == nil ? "Nytt eller uppdaterat issue" : "Ny eller uppdaterad pull request",
+                        message: "\(repository) #\(number) · \(work?.title ?? "Öppna ärendet i GitHub för detaljer.")",
+                        category: "issue",
+                        sourceKey: key
+                    ))
+                }
+            }
+            let merged = previousKeys.union(observedEventKeys)
+            // Keep storage bounded while retaining enough history to prevent repeat alerts.
+            seenKeysStorage = merged.sorted().suffix(500).joined(separator: "\n")
         }
         items = latest.sorted {
             ($0.pushedAt ?? .distantPast) > ($1.pushedAt ?? .distantPast)
