@@ -107,7 +107,7 @@ struct AssistantView: View {
                             .foregroundStyle(.white)
                     }
                 }
-                Text("Första versionen analyserar projektet utan att ändra kod. Skrivbehörighet och pull requests lägger vi till separat med godkännande.")
+                Text("Byte analyserar projektet utan att ändra kod. Kodförslag visas som diff och kan skickas till GitHub först efter ditt uttryckliga godkännande. GitHub kontrollerar sedan grundversionen och öppnar en separat pull request för granskning.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             }
             .padding(18).frame(maxWidth: 760).frame(maxWidth: .infinity, alignment: .topLeading)
