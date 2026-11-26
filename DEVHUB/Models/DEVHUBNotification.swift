@@ -9,13 +9,15 @@ final class DEVHUBNotification {
     var category: String
     var createdAt: Date
     var isRead: Bool
+    var sourceKey: String?
 
-    init(title: String, message: String, category: String = "system", createdAt: Date = .now, isRead: Bool = false) {
+    init(title: String, message: String, category: String = "system", createdAt: Date = .now, isRead: Bool = false, sourceKey: String? = nil) {
         self.id = UUID()
         self.title = title
         self.message = message
         self.category = category
         self.createdAt = createdAt
         self.isRead = isRead
+        self.sourceKey = sourceKey
     }
 }
