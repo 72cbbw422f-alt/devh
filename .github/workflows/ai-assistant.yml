@@ -56,6 +56,11 @@ jobs:
           ref: main
           path: project
 
+      - name: Capture project base commit
+        id: base
+        working-directory: project
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Build project context
         id: context
         working-directory: project
@@ -110,6 +115,7 @@ jobs:
           WORK_MODE: ${{ inputs.work_mode }}
           PREVIOUS_RESPONSE_ID: ${{ inputs.previous_response_id }}
           PROJECT_REPOSITORY: ${{ inputs.project_repository }}
+          PROJECT_BASE_SHA: ${{ steps.base.outputs.sha }}
           PROJECT_CONTEXT: ${{ steps.context.outputs.context }}
         run: |
           python3 - <<'PY'
@@ -184,6 +190,7 @@ jobs:
               result.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
               result.write("**Task:** " + os.environ["TASK"] + "\n\n")
               result.write(answer + "\n")
+              result.write("\n<!-- DEVHUB_BASE_SHA:" + os.environ["PROJECT_BASE_SHA"] + " -->\n")
               if response_id:
                   result.write("\n<!-- DEVHUB_RESPONSE_ID:" + response_id + " -->\n")
               usage_record = json.dumps({"model": model_name, "input_tokens": input_tokens,
