@@ -236,7 +236,7 @@ private enum GitHubTokenStore {
         var errorDescription: String? {
             switch self {
             case .keychain(let status):
-                return "Kunde inte spara GitHub-token i iOS-nyckelringen (felkod \\(status))."
+                return "Kunde inte spara GitHub-token i iOS-nyckelringen (felkod \(status))."
             }
         }
     }
@@ -257,7 +257,7 @@ private enum GitHubWorkflowClient {
         for _ in 0..<40 {
             try await Task.sleep(nanoseconds: 3_000_000_000)
             var request = URLRequest(url: URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/runs?per_page=10")!)
-            request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
             request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -265,7 +265,7 @@ private enum GitHubWorkflowClient {
             let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
             guard let run = runs.first(where: { (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10) }) else { continue }
             if run.status == "completed" {
-                let message = run.conclusion == "success" ? "AI-analysen lyckades! Resultatet finns i GitHub-körningens Summary." : "AI-körningen avslutades med fel (\\(run.conclusion ?? "okänt fel")). Öppna körningen för detaljer."
+                let message = run.conclusion == "success" ? "AI-analysen lyckades! Resultatet finns i GitHub-körningens Summary." : "AI-körningen avslutades med fel (\(run.conclusion ?? "okänt fel")). Öppna körningen för detaljer."
                 return RunResult(message: message, url: URL(string: run.html_url))
             }
         }
@@ -276,7 +276,7 @@ private enum GitHubWorkflowClient {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -301,7 +301,7 @@ private enum GitHubWorkflowClient {
             case .permission: return "GitHub nekade åtkomst. Kontrollera token och Actions: Read and write."
             case .statusCheck: return "Uppdraget skickades, men DEVHUB kunde inte läsa status från GitHub. Kontrollera tokenens Actions-behörighet."
             case .timeout: return "AI-körningen pågår fortfarande. DEVHUB slutade vänta efter två minuter. Öppna GitHub för att följa den."
-            case .http(let code, let detail): return "GitHub-anropet misslyckades (HTTP \\(code)): \\(detail)"
+            case .http(let code, let detail): return "GitHub-anropet misslyckades (HTTP \(code)): \(detail)"
             }
         }
     }
