@@ -114,7 +114,7 @@ struct ProjectHealthOverviewView: View {
                 Text("\(state.openItemsCount)")
                     .font(.caption.weight(.bold).monospacedDigit())
                     .foregroundStyle(StudioTheme.text)
-                Text("öppna ärenden")
+                Text("öppna ärenden totalt")
                     .font(.system(size: 8))
                     .foregroundStyle(StudioTheme.muted)
             }
@@ -147,7 +147,7 @@ struct ProjectHealthOverviewView: View {
                     repository: snapshot.0.fullName,
                     workflowStatus: workflow?.status ?? "none",
                     workflowConclusion: workflow?.status == "completed" ? workflow?.conclusion : nil,
-                    openItemsCount: workItems.count,
+                    openItemsCount: snapshot.0.openIssuesCount,
                     checkedAt: .now,
                     error: nil
                 ))
