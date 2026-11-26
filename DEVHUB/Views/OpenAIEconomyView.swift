@@ -34,9 +34,22 @@ struct OpenAIEconomyView: View {
                     ProgressView("Hämtar OpenAI-kostnader…")
                         .frame(maxWidth: .infinity).padding(30)
                 } else {
-                    sectionCard(title: "Ingen kostnadsdata ännu", subtitle: "OpenAI API-rapport") {
-                        Text(errorMessage ?? "Kostnadsrapporten visas här när den har hämtats.")
+                    sectionCard(title: "Kostnadsrapporten är inte tillgänglig ännu", subtitle: "OpenAI API-rapport · konfiguration krävs") {
+                        Text(errorMessage ?? "Ingen kostnadsrapport har hämtats ännu.")
                             .font(.subheadline).foregroundStyle(StudioTheme.secondaryText)
+                        Divider().overlay(StudioTheme.border)
+                        Label("1. Spara en GitHub-token i Assistent-fliken", systemImage: "key.horizontal")
+                            .font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                        Text("Tokenen behöver kunna läsa innehåll i DEVHUB-repot.")
+                            .font(.caption).foregroundStyle(StudioTheme.muted)
+                        Label("2. Lägg till OPENAI_ADMIN_KEY som GitHub Secret", systemImage: "lock.shield")
+                            .font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                        Text("Det krävs en OpenAI-organisationsnyckel med behörighet att läsa kostnadsdata. En vanlig API-nyckel eller GitHub-token räcker inte.")
+                            .font(.caption).foregroundStyle(StudioTheme.muted)
+                        Label("3. Kör arbetsflödet OpenAI cost snapshot", systemImage: "play.circle")
+                            .font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                        Text("När rapporten har publicerats till grenen openai-metrics kan DEVHUB läsa in diagram, projektfördelning och kostnadsposter.")
+                            .font(.caption).foregroundStyle(StudioTheme.muted)
                     }
                 }
 
