@@ -73,17 +73,18 @@ struct ContentView: View {
     }
 
     private func seedProjectsIfNeeded() {
-        // Watchlist was explicitly retired. Remove its old local seed and checklist during migration.
-        for project in storedProjects where project.id == "watchlist" {
-            modelContext.delete(project)
-        }
-        for task in storedTasks where task.projectID == "watchlist" {
-            modelContext.delete(task)
+        if storedProjects.isEmpty {
+            for project in StudioProject.samples {
+                modelContext.insert(StudioProjectRecord(project: project))
+            }
+            return
         }
 
-        guard storedProjects.isEmpty else { return }
-        for project in StudioProject.samples {
-            modelContext.insert(StudioProjectRecord(project: project))
+        // Restore Watchlist if an earlier app build removed its local seed.
+        if !storedProjects.contains(where: { $0.id == "watchlist" }) {
+            if let watchlist = StudioProject.samples.first(where: { $0.id == "watchlist" }) {
+                modelContext.insert(StudioProjectRecord(project: watchlist))
+            }
         }
     }
 }
