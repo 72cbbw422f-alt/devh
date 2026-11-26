@@ -132,8 +132,8 @@ struct AssistantView: View {
                 Button("Klar") { focusedField = nil }
             }
         }
-        .navigationTitle("Assistent")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
         .onAppear {
             if let token = GitHubTokenStore.read() {
                 githubToken = token
