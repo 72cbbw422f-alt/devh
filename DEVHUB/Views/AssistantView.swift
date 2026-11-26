@@ -325,7 +325,7 @@ struct AssistantView: View {
         Task {
             do {
                 try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, token: token)
-                await MainActor.run { statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"; task = "" }
+                await MainActor.run {\n                    if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {\n                        item.statusRawValue = "running"\n                        item.updatedAt = .now\n                    }\n                    statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"; task = ""\n                }
                 let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, token: token)
                 await MainActor.run {
                     isSending = false
