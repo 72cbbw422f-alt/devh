@@ -75,6 +75,26 @@ struct GitHubActivityFeedView: View {
                                 }
                                 .font(.system(size: 10, weight: .semibold))
                                 .tint(StudioTheme.accent)
+                                if !item.openWorkItems.isEmpty {
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text("ÖPPET ARBETE")
+                                            .font(.system(size: 8, weight: .bold))
+                                            .tracking(0.8)
+                                            .foregroundStyle(StudioTheme.muted)
+                                        ForEach(item.openWorkItems) { work in
+                                            Link(destination: work.htmlURL) {
+                                                HStack(spacing: 5) {
+                                                    Image(systemName: work.symbol)
+                                                    Text("\(work.kindLabel) #\(work.number) · \(work.title)")
+                                                        .lineLimit(1)
+                                                }
+                                                .font(.system(size: 10, weight: .medium))
+                                                .foregroundStyle(StudioTheme.secondaryText)
+                                            }
+                                        }
+                                    }
+                                    .padding(.top, 5)
+                                }
                             }
                         }
                         .padding(.vertical, 12)
@@ -118,6 +138,7 @@ struct GitHubActivityFeedView: View {
             do {
                 let result = try await service.fetchSnapshot(repository: project.repository)
                 let workflow = try? await service.fetchLatestWorkflowRun(repository: project.repository)
+                let openWorkItems = (try? await service.fetchOpenWorkItems(repository: project.repository)) ?? []
                 let workflowSucceeded = workflow?.conclusion == "success"
                 let workflowLabel = workflow.map { run in
                     if run.status != "completed" { return "Actions körs" }
@@ -133,7 +154,8 @@ struct GitHubActivityFeedView: View {
                         pushedAt: result.0.pushedAt,
                         workflowLabel: workflowLabel,
                         workflowURL: workflow?.htmlURL,
-                        workflowSucceeded: workflow == nil ? nil : workflowSucceeded
+                        workflowSucceeded: workflow == nil ? nil : workflowSucceeded,
+                        openWorkItems: openWorkItems
                     )
                 )
             } catch {
