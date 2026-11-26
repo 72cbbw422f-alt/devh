@@ -90,7 +90,7 @@ jobs:
           Cite exact file paths, suggest safe next steps, and never claim to modify files.
           Reply in Swedish unless asked otherwise."""
           payload = {
-              "model": "gpt-6",
+              "model": "gpt-6.2-sol",
               "input": [
                   {"role": "system", "content": system},
                   {"role": "user", "content": "Repository: " + os.environ["PROJECT_REPOSITORY"] +
