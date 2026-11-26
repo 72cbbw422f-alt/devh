@@ -256,11 +256,18 @@ struct AssistantView: View {
                 Label("Bytes arbetskö", systemImage: "tray.full.fill")
                     .font(.headline).foregroundStyle(StudioTheme.text)
                 Spacer()
-                Text("\\(byteWorkItems.count) uppdrag")
+                Text("\(filteredQueueItems.count) av \(byteWorkItems.count) uppdrag")
                     .font(.caption.monospacedDigit()).foregroundStyle(StudioTheme.muted)
             }
-            Picker("Visa", selection: $queueFilter) {\n                Text("Alla").tag("Alla")\n                Text("Aktiva").tag("Aktiva")\n                Text("Klara").tag("Klara")\n                Text("Misslyckade").tag("Misslyckade")\n            }\n            .pickerStyle(.segmented)\n            if filteredQueueItems.isEmpty {
-                Text("När du skickar ett uppdrag till Byte hamnar det här med aktuell status.")
+            Picker("Visa", selection: $queueFilter) {
+                Text("Alla").tag("Alla")
+                Text("Aktiva").tag("Aktiva")
+                Text("Klara").tag("Klara")
+                Text("Misslyckade").tag("Misslyckade")
+            }
+            .pickerStyle(.segmented)
+            if filteredQueueItems.isEmpty {
+                Text("Inga uppdrag i den här vyn ännu.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             } else {
                 ForEach(filteredQueueItems.prefix(12)) { item in
@@ -269,13 +276,17 @@ struct AssistantView: View {
                             .foregroundStyle(queueColor(item.statusRawValue))
                             .frame(width: 18)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title).font(.subheadline.weight(.medium)).foregroundStyle(StudioTheme.text)
+                            Text(item.title)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(StudioTheme.text)
                                 .lineLimit(3)
                             Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.statusLabel)
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
+                            Text(item.createdAt, style: .relative)
+                                .font(.caption2).foregroundStyle(StudioTheme.muted)
                             if let rawURL = item.workflowURL, let url = URL(string: rawURL) {
-                                Link("Öppna körning", destination: url).font(.caption.weight(.semibold))
-                                    .tint(StudioTheme.accentCyan)
+                                Link("Öppna körning", destination: url)
+                                    .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
                             }
                         }
                         Spacer(minLength: 0)
@@ -284,7 +295,7 @@ struct AssistantView: View {
                     .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
                 }
             }
-            Text("Kön visar uppdrag som skickats från den här enheten. Den är ännu inte en central kö mellan flera användare eller appar.")
+            Text("Kön är lokal på den här enheten och synkroniseras ännu inte mellan användare eller appar.")
                 .font(.caption2).foregroundStyle(StudioTheme.muted)
         }
         .padding(15).frame(maxWidth: .infinity, alignment: .leading)
