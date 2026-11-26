@@ -2,7 +2,21 @@ import SwiftUI
 
 struct AddProjectView: View {
     @Environment(\.dismiss) private var dismiss
-    let existingProject: StudioProject?\n    let onSave: (StudioProject) -> Void\n\n    init(project: StudioProject? = nil, onSave: @escaping (StudioProject) -> Void) {\n        self.existingProject = project\n        self.onSave = onSave\n        _name = State(initialValue: project?.name ?? "")\n        _subtitle = State(initialValue: project?.subtitle ?? "")\n        _repository = State(initialValue: project?.repository ?? "")\n        _platform = State(initialValue: project?.platform ?? "iOS")\n        _category = State(initialValue: project?.category ?? "App")\n        _status = State(initialValue: project?.status ?? .planning)\n        _accent = State(initialValue: project?.accent ?? "7164F2")\n        _symbol = State(initialValue: project?.symbol ?? "app.fill")\n    }
+    let existingProject: StudioProject?
+    let onSave: (StudioProject) -> Void
+
+    init(project: StudioProject? = nil, onSave: @escaping (StudioProject) -> Void) {
+        self.existingProject = project
+        self.onSave = onSave
+        _name = State(initialValue: project?.name ?? "")
+        _subtitle = State(initialValue: project?.subtitle ?? "")
+        _repository = State(initialValue: project?.repository ?? "")
+        _platform = State(initialValue: project?.platform ?? "iOS")
+        _category = State(initialValue: project?.category ?? "App")
+        _status = State(initialValue: project?.status ?? .planning)
+        _accent = State(initialValue: project?.accent ?? "7164F2")
+        _symbol = State(initialValue: project?.symbol ?? "app.fill")
+    }
 
     @State private var name = ""
     @State private var subtitle = ""
