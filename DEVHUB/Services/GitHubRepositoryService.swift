@@ -46,6 +46,30 @@ struct GitHubWorkflowRunSnapshot: Decodable, Sendable {
     }
 }
 
+
+struct GitHubOpenWorkItem: Decodable, Identifiable, Sendable {
+    struct PullRequestLink: Decodable, Sendable {
+        let url: URL?
+        enum CodingKeys: String, CodingKey { case url = "html_url" }
+    }
+
+    let number: Int
+    let title: String
+    let htmlURL: URL
+    let updatedAt: Date
+    let pullRequest: PullRequestLink?
+
+    var kindLabel: String { pullRequest == nil ? "Issue" : "PR" }
+    var symbol: String { pullRequest == nil ? "exclamationmark.circle" : "arrow.triangle.pull" }
+
+    enum CodingKeys: String, CodingKey {
+        case number, title
+        case htmlURL = "html_url"
+        case updatedAt = "updated_at"
+        case pullRequest = "pull_request"
+    }
+}
+
 enum GitHubRepositoryError: LocalizedError {
     case invalidRepository
     case notFound
@@ -126,6 +150,13 @@ struct GitHubRepositoryService {
         let result = CachedGitHubRepository(snapshot: snapshot, latestCommit: commits?.first)
         await GitHubRepositoryCache.shared.store(result, for: path)
         return (result.snapshot, result.latestCommit)
+    }
+
+
+    func fetchOpenWorkItems(repository: String) async throws -> [GitHubOpenWorkItem] {
+        let path = try validatedPath(repository)
+        let url = URL(string: "https://api.github.com/repos/\(path)/issues?state=open&sort=updated&direction=desc&per_page=4")!
+        return try await request(url)
     }
 
     func fetchLatestWorkflowRun(repository: String) async throws -> GitHubWorkflowRunSnapshot? {
