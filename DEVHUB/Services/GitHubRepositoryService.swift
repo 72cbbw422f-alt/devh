@@ -59,6 +59,7 @@ struct GitHubOpenWorkItem: Decodable, Identifiable, Sendable {
     let updatedAt: Date
     let pullRequest: PullRequestLink?
 
+    var id: Int { number }
     var kindLabel: String { pullRequest == nil ? "Issue" : "PR" }
     var symbol: String { pullRequest == nil ? "exclamationmark.circle" : "arrow.triangle.pull" }
 
