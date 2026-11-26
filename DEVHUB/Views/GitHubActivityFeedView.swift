@@ -267,10 +267,10 @@ struct GitHubActivityFeedView: View {
                     warnings.append("Issues/PR kunde inte hämtas")
                 }
                 if let workflow, workflow.status == "completed" {
-                    observedEventKeys.insert("workflow:\(project.repository):\(workflow.id):\(workflow.conclusion ?? "unknown")")
+                    observedEventKeys.insert("workflow|\(project.repository)|\(workflow.id)|\(workflow.conclusion ?? "unknown")")
                 }
                 for work in openWorkItems {
-                    observedEventKeys.insert("work:\(project.repository):\(work.number):\(work.updatedAt.timeIntervalSince1970)")
+                    observedEventKeys.insert("work|\(project.repository)|\(work.number)|\(work.updatedAt.timeIntervalSince1970)")
                 }
                 let workflowSucceeded = workflow?.conclusion == "success"
                 let workflowLabel = workflow.map { run in
@@ -304,27 +304,30 @@ struct GitHubActivityFeedView: View {
         } else {
             let newKeys = observedEventKeys.subtracting(previousKeys)
             for key in newKeys {
-                if key.hasPrefix("workflow:") {
-                    let parts = key.split(separator: ":")
+                if key.hasPrefix("workflow|") {
+                    let parts = key.split(separator: "|")
                     let repository = parts.count > 1 ? String(parts[1]) : "GitHub"
-                    let conclusion = parts.last.map(String.init) ?? "unknown"
+                    let conclusion = parts.count > 3 ? String(parts[3]) : "unknown"
                     let succeeded = conclusion == "success"
                     modelContext.insert(DEVHUBNotification(
                         title: succeeded ? "Ny byggning lyckades" : "En byggning behöver kontrolleras",
                         message: "\(repository): GitHub Actions avslutades med resultatet \(conclusion).",
                         category: succeeded ? "build" : "issue",
-                        sourceKey: key
+                        sourceKey: key,
+                        destinationURL: latest.first(where: { $0.repositoryURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == repository })?.workflowURL?.absoluteString
                     ))
-                } else if key.hasPrefix("work:") {
-                    let parts = key.split(separator: ":")
+                } else if key.hasPrefix("work|") {
+                    let parts = key.split(separator: "|")
                     let repository = parts.count > 1 ? String(parts[1]) : "GitHub"
                     let number = parts.count > 2 ? String(parts[2]) : "?"
-                    let work = latest.first(where: { $0.repositoryURL.path.contains(repository) })?.openWorkItems.first { String($0.number) == number }
+                    let project = latest.first(where: { $0.repositoryURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == repository })
+                    let work = project?.openWorkItems.first { String($0.number) == number }
                     modelContext.insert(DEVHUBNotification(
                         title: work?.pullRequest == nil ? "Nytt eller uppdaterat issue" : "Ny eller uppdaterad pull request",
                         message: "\(repository) #\(number) · \(work?.title ?? "Öppna ärendet i GitHub för detaljer.")",
                         category: "issue",
-                        sourceKey: key
+                        sourceKey: key,
+                        destinationURL: work?.htmlURL.absoluteString
                     ))
                 }
             }
