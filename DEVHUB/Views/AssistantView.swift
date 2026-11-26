@@ -466,7 +466,7 @@ struct AssistantView: View {
                         }
                     } label: {
                         Label(
-                            showsAllQueueItems ? "Visa färre uppdrag" : "Visa alla \\(filteredQueueItems.count) uppdrag",
+                            showsAllQueueItems ? "Visa färre uppdrag" : "Visa alla \(filteredQueueItems.count) uppdrag",
                             systemImage: showsAllQueueItems ? "chevron.up" : "chevron.down"
                         )
                         .font(.caption.weight(.semibold))
