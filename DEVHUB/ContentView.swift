@@ -1,69 +1,51 @@
 import SwiftUI
 import SwiftData
 
-enum StudioTab: String, CaseIterable, Identifiable {
-    case overview="Översikt", projects="Projekt", assistant="Assistent", activity="Utveckling", roadmap="Roadmap", revenue="Ekonomi", analytics="Analys", notifications="Notiser"
-    var id:String { rawValue }
-    var symbol:String {
+enum StudioTab: String, CaseIterable, Identifiable, Hashable {
+    case overview = "Översikt"
+    case projects = "Projekt"
+    case assistant = "Assistent"
+    case activity = "Utveckling"
+    case roadmap = "Roadmap"
+    case revenue = "Ekonomi"
+    case analytics = "Analys"
+    case notifications = "Notiser"
+
+    var id: String { rawValue }
+
+    var symbol: String {
         switch self {
-        case .overview:"square.grid.2x2"
-        case .projects:"square.stack.3d.up"
-        case .assistant:"sparkles"
-        case .activity:"arrow.triangle.branch"
-        case .roadmap:"map"
-        case .revenue:"chart.line.uptrend.xyaxis"
-        case .analytics:"chart.bar"
-        case .notifications:"bell"
+        case .overview: "square.grid.2x2"
+        case .projects: "square.stack.3d.up"
+        case .assistant: "sparkles"
+        case .activity: "arrow.triangle.branch"
+        case .roadmap: "map"
+        case .revenue: "chart.line.uptrend.xyaxis"
+        case .analytics: "chart.bar"
+        case .notifications: "bell"
         }
     }
 }
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Query(sort: \\StudioProjectRecord.createdAt) private var storedProjects: [StudioProjectRecord]
     @Query private var storedTasks: [ProjectTaskItem]
-    @State private var selection:StudioTab = .overview
-    @State private var selectedProject:StudioProject?
+    @State private var selection: StudioTab = .overview
+    @State private var selectedProject: StudioProject?
     @State private var showingAddProject = false
 
-    private var projects: [StudioProject] { storedProjects.filter { !$0.isArchived }.map(\.project) }
+    private var projects: [StudioProject] {
+        storedProjects.filter { !$0.isArchived }.map(\\.project)
+    }
 
     var body: some View {
-        TabView(selection:$selection) {
-            NavigationStack {
-                OverviewView(projects:projects) { selectedProject = $0 }
-                    .navigationDestination(item:$selectedProject) { ProjectDetailView(project:$0) }
-            }.tabItem { Label(StudioTab.overview.rawValue,systemImage:StudioTab.overview.symbol) }.tag(StudioTab.overview)
-            NavigationStack {
-                ProjectListView { selectedProject = $0 }
-                    .navigationDestination(item:$selectedProject) { ProjectDetailView(project:$0) }
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button { showingAddProject = true } label: {
-                                Image(systemName: "plus").fontWeight(.semibold)
-                            }
-                            .accessibilityLabel("Lägg till projekt")
-                        }
-                    }
-            }.tabItem { Label(StudioTab.projects.rawValue,systemImage:StudioTab.projects.symbol) }.tag(StudioTab.projects)
-            NavigationStack { AssistantView() }
-                .tabItem { Label(StudioTab.assistant.rawValue,systemImage:StudioTab.assistant.symbol) }.tag(StudioTab.assistant)
-            ForEach([StudioTab.activity,.roadmap,.revenue,.analytics,.notifications]) { tab in
-                NavigationStack {
-                    if tab == .roadmap {
-                        RoadmapView(projects: projects) { selectedProject = $0 }
-                    } else if tab == .analytics {
-                        AnalyticsView()
-                    } else if tab == .notifications {
-                        NotificationCenterView()
-                    } else if tab == .revenue {
-                        OpenAIEconomyView()
-                    } else {
-                        PlaceholderView(tab: tab)
-                    }
-                }
-                .navigationDestination(item: $selectedProject) { ProjectDetailView(project: $0) }
-                .tabItem { Label(tab.rawValue, systemImage: tab.symbol) }.tag(tab)
+        Group {
+            if horizontalSizeClass == .regular {
+                iPadLayout
+            } else {
+                iPhoneLayout
             }
         }
         .tint(StudioTheme.accent)
@@ -80,6 +62,108 @@ struct ContentView: View {
             }
         }
         .task { seedProjectsIfNeeded() }
+    }
+
+    private var iPadLayout: some View {
+        NavigationSplitView {
+            List(selection: $selection) {
+                Section("ARBETSPLATS") {
+                    ForEach([StudioTab.overview, .projects, .assistant]) { tab in
+                        Label(tab.rawValue, systemImage: tab.symbol)
+                            .tag(tab)
+                    }
+                }
+                Section("UTVECKLING") {
+                    ForEach([StudioTab.activity, .roadmap]) { tab in
+                        Label(tab.rawValue, systemImage: tab.symbol)
+                            .tag(tab)
+                    }
+                }
+                Section("INSIKTER") {
+                    ForEach([StudioTab.revenue, .analytics, .notifications]) { tab in
+                        Label(tab.rawValue, systemImage: tab.symbol)
+                            .tag(tab)
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(StudioTheme.background)
+            .navigationTitle("DEVHUB")
+            .navigationSplitViewColumnWidth(min: 220, ideal: 250, max: 300)
+        } detail: {
+            NavigationStack {
+                tabContent(for: selection)
+                    .navigationTitle(selection.rawValue)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .navigationDestination(item: $selectedProject) {
+                        ProjectDetailView(project: $0)
+                    }
+                    .toolbar {
+                        if selection == .projects {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button {
+                                    showingAddProject = true
+                                } label: {
+                                    Image(systemName: "plus").fontWeight(.semibold)
+                                }
+                                .accessibilityLabel("Lägg till projekt")
+                            }
+                        }
+                    }
+            }
+            .background(StudioTheme.background)
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var iPhoneLayout: some View {
+        TabView(selection: $selection) {
+            ForEach(StudioTab.allCases) { tab in
+                NavigationStack {
+                    tabContent(for: tab)
+                        .navigationDestination(item: $selectedProject) {
+                            ProjectDetailView(project: $0)
+                        }
+                        .toolbar {
+                            if tab == .projects {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button {
+                                        showingAddProject = true
+                                    } label: {
+                                        Image(systemName: "plus").fontWeight(.semibold)
+                                    }
+                                    .accessibilityLabel("Lägg till projekt")
+                                }
+                            }
+                        }
+                }
+                .tabItem { Label(tab.rawValue, systemImage: tab.symbol) }
+                .tag(tab)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tabContent(for tab: StudioTab) -> some View {
+        switch tab {
+        case .overview:
+            OverviewView(projects: projects) { selectedProject = $0 }
+        case .projects:
+            ProjectListView { selectedProject = $0 }
+        case .assistant:
+            AssistantView()
+        case .activity:
+            PlaceholderView(tab: tab)
+        case .roadmap:
+            RoadmapView(projects: projects) { selectedProject = $0 }
+        case .revenue:
+            OpenAIEconomyView()
+        case .analytics:
+            AnalyticsView()
+        case .notifications:
+            NotificationCenterView()
+        }
     }
 
     private func seedProjectsIfNeeded() {
