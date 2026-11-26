@@ -358,21 +358,26 @@ struct ProjectDetailView: View {
     }
 
     private func seedProjectTrackingIfNeeded() {
+        let milestoneRecords: [ProjectMilestoneItem]
         if storedMilestones.isEmpty {
-            for (index, title) in milestones.enumerated() {
-                modelContext.insert(ProjectMilestoneItem(projectID: project.id, title: title, sortOrder: index))
+            milestoneRecords = milestones.enumerated().map { index, title in
+                let item = ProjectMilestoneItem(projectID: project.id, title: title, sortOrder: index)
+                modelContext.insert(item)
+                return item
             }
+        } else {
+            milestoneRecords = storedMilestones
         }
         if storedTasks.isEmpty {
-            for (index, title) in suggestedTasks.enumerated() where index < storedMilestones.count {
-                modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, weight: index == 0 ? 3 : 2, milestoneID: storedMilestones[index].id))
+            for (index, title) in suggestedTasks.enumerated() where index < milestoneRecords.count {
+                modelContext.insert(ProjectTaskItem(projectID: project.id, title: title, weight: index == 0 ? 3 : 2, milestoneID: milestoneRecords[index].id))
             }
         } else {
             let unlinkedTasks = storedTasks.filter { $0.milestoneID == nil }
-            for (index, task) in unlinkedTasks.enumerated() where index < storedMilestones.count {
-                task.milestoneID = storedMilestones[index].id
+            for (index, task) in unlinkedTasks.enumerated() where index < milestoneRecords.count {
+                task.milestoneID = milestoneRecords[index].id
             }
         }
-        if selectedMilestoneID.isEmpty { selectedMilestoneID = storedMilestones.first?.id ?? "" }
+        if selectedMilestoneID.isEmpty { selectedMilestoneID = milestoneRecords.first?.id ?? "" }
     }
 }
