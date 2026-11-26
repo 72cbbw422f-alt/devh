@@ -138,10 +138,14 @@ struct GitHubActivityFeedView: View {
                     .foregroundStyle(StudioTheme.muted)
                 ForEach(workItems) { work in
                     Link(destination: work.htmlURL) {
-                        HStack(spacing: 5) {
+                        HStack(spacing: 6) {
                             Image(systemName: work.symbol)
                             Text("\(work.kindLabel) #\(work.number) · \(work.title)")
                                 .lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text(work.updatedAt, style: .relative)
+                                .font(.system(size: 8, weight: .regular))
+                                .foregroundStyle(StudioTheme.muted)
                         }
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(StudioTheme.secondaryText)
