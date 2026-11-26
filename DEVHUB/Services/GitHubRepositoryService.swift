@@ -34,12 +34,13 @@ struct GitHubCommitSnapshot: Decodable, Sendable {
 }
 
 struct GitHubWorkflowRunSnapshot: Decodable, Sendable {
+    let id: Int
     let name: String?
     let htmlURL: URL
     let status: String
     let conclusion: String?
     enum CodingKeys: String, CodingKey {
-        case name
+        case id, name
         case htmlURL = "html_url"
         case status
         case conclusion
