@@ -6,6 +6,7 @@ private struct ProjectHealthState: Identifiable {
     let repository: String
     let workflowStatus: String
     let workflowConclusion: String?
+    let workflowURL: URL?
     let openItemsCount: Int
     let checkedAt: Date
     let error: String?
@@ -131,6 +132,11 @@ struct ProjectHealthOverviewView: View {
                             Text(focusReason(for: state))
                                 .font(.system(size: 10))
                                 .foregroundStyle(StudioTheme.muted)
+                            Link(destination: state.workflowURL ?? repositoryURL(for: state)) {
+                                Label(state.workflowURL == nil ? "Öppna repository" : "Öppna byggning", systemImage: "arrow.up.right")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(StudioTheme.accent)
+                            }
                         }
                         Spacer(minLength: 0)
                     }
@@ -141,6 +147,10 @@ struct ProjectHealthOverviewView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(StudioTheme.border, lineWidth: 1))
+    }
+
+    private func repositoryURL(for state: ProjectHealthState) -> URL {
+        URL(string: "https://github.com/\(state.repository)")!
     }
 
     private func focusReason(for state: ProjectHealthState) -> String {
@@ -159,9 +169,15 @@ struct ProjectHealthOverviewView: View {
                 Text(state.projectName)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(StudioTheme.text)
-                Text(state.statusTitle)
+                Link(destination: state.workflowURL ?? repositoryURL(for: state)) {
+                    HStack(spacing: 4) {
+                        Text(state.statusTitle)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 8, weight: .bold))
+                    }
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(state.statusColor)
+                }
                 if let error = state.error {
                     Text(error)
                         .font(.system(size: 9))
@@ -205,6 +221,7 @@ struct ProjectHealthOverviewView: View {
                     repository: snapshot.0.fullName,
                     workflowStatus: workflow?.status ?? "none",
                     workflowConclusion: workflow?.status == "completed" ? workflow?.conclusion : nil,
+                    workflowURL: workflow?.htmlURL,
                     openItemsCount: snapshot.0.openIssuesCount,
                     checkedAt: .now,
                     error: nil
@@ -216,6 +233,7 @@ struct ProjectHealthOverviewView: View {
                     repository: project.repository,
                     workflowStatus: "unknown",
                     workflowConclusion: nil,
+                    workflowURL: nil,
                     openItemsCount: 0,
                     checkedAt: .now,
                     error: error.localizedDescription
