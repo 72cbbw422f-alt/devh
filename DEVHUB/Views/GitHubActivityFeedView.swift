@@ -392,7 +392,7 @@ struct GitHubActivityFeedView: View {
                     let number = parts.count > 2 ? String(parts[2]) : "?"
                     let project = latest.first(where: { $0.repositoryURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == repository })
                     let work = project?.openWorkItems.first { String($0.number) == number }
-                    modelContext.insert(DEVHUBNotification(
+                    insertNotificationIfNeeded(DEVHUBNotification(
                         title: work?.pullRequest == nil ? "Nytt eller uppdaterat issue" : "Ny eller uppdaterad pull request",
                         message: "\(repository) #\(number) · \(work?.title ?? "Öppna ärendet i GitHub för detaljer.")",
                         category: "issue",
