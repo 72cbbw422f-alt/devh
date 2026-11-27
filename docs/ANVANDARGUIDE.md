@@ -58,6 +58,15 @@ Ett kodförslag visas som en diff – en jämförelse som visar vilka rader som 
 
 Om ett försök misslyckas kan du få möjlighet att försöka skapa PR igen. Kontrollera alltid den befintliga GitHub-körningen innan du upprepar ett steg som kan ha skickats men där appen tappat kontakten.
 
+## 6.1 Roadmap och verkligt arbetsläge
+
+Roadmap skiljer mellan två typer av framsteg:
+
+- **Planerat framsteg:** projektets manuella planeringsvärde och nästa milstolpe.
+- **Checklistor:** sparade projektuppgifter som markerats klara. Vyn visar både antal klara uppgifter och andelen per projekt.
+
+Checklistor visar vad som har markerats klart i DEVHUB. De är inte automatiskt verifierade mot GitHub och ska inte tolkas som bevis på att kod har mergats eller släppts. För faktisk GitHub-status, senaste commit och Actions-resultat använder du fliken **Utveckling**.
+
 ## 7. Om något verkar ha fastnat
 
 1. Vänta en stund och använd uppdateringsknappen i arbetskön.
