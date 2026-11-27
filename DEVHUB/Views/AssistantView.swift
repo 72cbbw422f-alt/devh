@@ -831,10 +831,13 @@ struct AssistantView: View {
         item.patchWorkflowURL = nil
         let startedAt = Date()
         item.patchDispatchedAt = startedAt
+        item.patchFailureDetails = nil
         statusMessage = "Skickar ditt godkända förslag till GitHub…"
         Task {
+            var dispatchAccepted = false
             do {
                 try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, token: token)
+                dispatchAccepted = true
                 await MainActor.run {
                     item.patchStatusRawValue = "dispatched"
                     item.updatedAt = .now
@@ -875,9 +878,14 @@ struct AssistantView: View {
                 }
             } catch {
                 await MainActor.run {
-                    item.patchStatusRawValue = "pending"
+                    if dispatchAccepted {
+                        item.patchStatusRawValue = item.patchWorkflowRunID == nil ? "dispatched" : "running"
+                        statusMessage = "GitHub tog emot godkännandet, men statuskontrollen misslyckades: \(error.localizedDescription). Kontrollera den befintliga körningen innan du försöker igen."
+                    } else {
+                        item.patchStatusRawValue = "pending"
+                        statusMessage = "Kunde inte skicka godkännandet: \(error.localizedDescription)"
+                    }
                     item.updatedAt = .now
-                    statusMessage = "Kunde inte skicka godkännandet: \(error.localizedDescription)"
                 }
             }
         }
