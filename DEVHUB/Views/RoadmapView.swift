@@ -35,6 +35,10 @@ struct RoadmapView: View {
         allTasks.count
     }
 
+    private var verifiedTaskCount: Int {
+        allTasks.filter { $0.statusRawValue == "verified" }.count
+    }
+
     private func tasks(for project: StudioProject) -> [ProjectTaskItem] {
         allTasks.filter { $0.projectID == project.id }
     }
@@ -61,7 +65,7 @@ struct RoadmapView: View {
                         }
                     }
                 }
-                Text("Planerat framsteg är projektets manuella planeringsvärde. Checklistorna visar sparade uppgifter som markerats klara – de är inte automatiskt verifierade mot GitHub. Byggstatus och commits visas under Utveckling.")
+                Text("Planerat framsteg är projektets manuella planeringsvärde. GitHub-verifierade uppgifter har en mergad PR och godkända kontroller. Manuellt klarmarkerade uppgifter redovisas separat. Byggstatus och commits visas under Utveckling.")
                     .font(.caption)
                     .foregroundStyle(StudioTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -95,7 +99,7 @@ struct RoadmapView: View {
             summaryMetric(value: "\(projects.count)", label: "PROJEKT", symbol: "square.stack.3d.up")
             summaryMetric(value: "\(projects.filter { $0.status == .active }.count)", label: "AKTIVA", symbol: "bolt.fill")
             summaryMetric(value: "\(averageProgress)%", label: "PLANERAT SNITT", symbol: "chart.pie")
-            summaryMetric(value: "\(completedTaskCount)/\(totalTaskCount)", label: "UPPGIFTER KLARA", symbol: "checkmark.circle")
+            summaryMetric(value: "\(verifiedTaskCount)", label: "GITHUB-VERIFIERADE", symbol: "checkmark.seal.fill")
         }
     }
 
@@ -185,7 +189,9 @@ struct RoadmapView: View {
                             .foregroundStyle(StudioTheme.muted)
                         Spacer()
                         let projectTasks = tasks(for: project)
-                        Text(projectTasks.isEmpty ? "Inga uppgifter" : "\(projectTasks.filter(\.isCompleted).count)/\(projectTasks.count) klara")
+                        let verifiedCount = projectTasks.filter { $0.statusRawValue == "verified" }.count
+                        let manualCount = projectTasks.filter { $0.isCompleted && $0.statusRawValue != "verified" }.count
+                        Text(projectTasks.isEmpty ? "Inga uppgifter" : "\(verifiedCount) verifierade · \(manualCount) manuellt klara")
                             .font(.caption2.monospacedDigit().weight(.medium))
                             .foregroundStyle(StudioTheme.secondaryText)
                     }
