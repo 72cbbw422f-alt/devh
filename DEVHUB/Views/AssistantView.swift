@@ -23,7 +23,6 @@ struct AssistantView: View {
     @State private var showsAllQueueItems = false
     @State private var isRefreshingQueue = false
     @State private var queueFailureDetails: [Int: String] = [:]
-    @State private var patchFailureDetails: [String: String] = [:]
     @State private var githubToken = ""
     @State private var hasSavedToken = false
     @State private var isSending = false
@@ -449,7 +448,7 @@ struct AssistantView: View {
                                             Link("Följ GitHub-jobbet", destination: url)
                                                 .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
                                         }
-                                        if let details = patchFailureDetails[item.id] {
+                                        if let details = item.patchFailureDetails {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Label("Felorsak", systemImage: "exclamationmark.triangle.fill")
                                                     .font(.caption.weight(.semibold)).foregroundStyle(.red)
@@ -856,7 +855,7 @@ struct AssistantView: View {
                     : nil
                 await MainActor.run {
                     item.patchStatusRawValue = succeeded ? "completed" : "failed"
-                    if let failureDetails { patchFailureDetails[item.id] = failureDetails }
+                    item.patchFailureDetails = failureDetails
                     item.patchPullRequestURL = pullRequestURL?.absoluteString ?? item.patchPullRequestURL
                     item.updatedAt = .now
                     item.patchWorkflowURL = result.url?.absoluteString ?? item.patchWorkflowURL
@@ -911,7 +910,7 @@ struct AssistantView: View {
                     : nil
                 await MainActor.run {
                     item.patchStatusRawValue = succeeded ? "completed" : "failed"
-                    if let failureDetails { patchFailureDetails[item.id] = failureDetails }
+                    item.patchFailureDetails = failureDetails
                     item.patchPullRequestURL = pullRequestURL?.absoluteString ?? item.patchPullRequestURL
                     item.patchWorkflowURL = result.url?.absoluteString ?? item.patchWorkflowURL
                     item.updatedAt = .now
