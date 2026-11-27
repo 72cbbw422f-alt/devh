@@ -372,8 +372,9 @@ struct AssistantView: View {
             .pickerStyle(.menu).tint(StudioTheme.accent)
             HStack(spacing: 8) {
                 queueMetric(title: "Aktiva", count: byteWorkItems.filter { $0.statusRawValue == "queued" || $0.statusRawValue == "running" }.count, color: StudioTheme.accent)
-                queueMetric(title: "Klara", count: byteWorkItems.filter { $0.statusRawValue == "completed" }.count, color: StudioTheme.accentCyan)
-                queueMetric(title: "Fel", count: byteWorkItems.filter { $0.statusRawValue == "failed" }.count, color: .red)
+                queueMetric(title: "PR väntar", count: byteWorkItems.filter { $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count, color: .orange)
+                queueMetric(title: "Klara", count: byteWorkItems.filter { $0.statusRawValue == "completed" || $0.patchStatusRawValue == "completed" }.count, color: StudioTheme.accentCyan)
+                queueMetric(title: "Fel", count: byteWorkItems.filter { $0.statusRawValue == "failed" || $0.patchStatusRawValue == "failed" }.count, color: .red)
             }
             Picker("Visa", selection: $queueFilter) {
                 Text("Alla").tag("Alla")
@@ -398,7 +399,12 @@ struct AssistantView: View {
                                 .lineLimit(3)
                             Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.workModeLabel + " · " + item.statusLabel)
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
-                            Text(item.createdAt, style: .relative)
+                            if item.patchStatusRawValue != "pending" {
+                                Label(patchQueueStatusLabel(item.patchStatusRawValue), systemImage: patchQueueStatusSymbol(item.patchStatusRawValue))
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(patchQueueStatusColor(item.patchStatusRawValue))
+                            }
+                            Text("Senast ändrad ") + Text(item.updatedAt, style: .relative)
                                 .font(.caption2).foregroundStyle(StudioTheme.muted)
                             if item.inputTokens > 0 || item.outputTokens > 0 {
                                 Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
@@ -829,6 +835,36 @@ struct AssistantView: View {
         }
     }
 
+    private func patchQueueStatusLabel(_ status: String) -> String {
+        switch status {
+        case "dispatching": "Skickar godkännande"
+        case "dispatched": "Väntar på GitHub"
+        case "running": "GitHub skapar PR"
+        case "completed": "PR klar för granskning"
+        case "failed": "PR-skapandet misslyckades"
+        default: "Kodförslag finns"
+        }
+    }
+
+    private func patchQueueStatusSymbol(_ status: String) -> String {
+        switch status {
+        case "dispatching", "dispatched": "clock"
+        case "running": "arrow.triangle.2.circlepath"
+        case "completed": "checkmark.circle.fill"
+        case "failed": "exclamationmark.circle.fill"
+        default: "doc.text"
+        }
+    }
+
+    private func patchQueueStatusColor(_ status: String) -> Color {
+        switch status {
+        case "dispatching", "dispatched": .orange
+        case "running": StudioTheme.accentCyan
+        case "completed": .green
+        case "failed": .red
+        default: StudioTheme.muted
+        }
+    }
     private func queueSymbol(_ status: String) -> String {
         switch status {
         case "running": "arrow.triangle.2.circlepath"
