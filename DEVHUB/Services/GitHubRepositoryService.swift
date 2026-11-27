@@ -232,7 +232,7 @@ struct GitHubRepositoryService {
         }
         let statusURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/status")!
         let combinedStatus: GitHubCombinedStatus = try await request(statusURL)
-        guard combinedStatus.state == "success" else {
+        if combinedStatus.totalCount > 0 && combinedStatus.state != "success" {
             throw GitHubRepositoryError.checksNotSuccessful
         }
         let workflowURL = checks.checkRuns.compactMap { $0.htmlURL }.first ?? pullRequest.htmlURL
