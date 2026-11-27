@@ -535,12 +535,17 @@ struct AssistantView: View {
                                             VStack(alignment: .leading, spacing: 7) {
                                                 Label("GitHub kunde inte skapa PR", systemImage: "exclamationmark.circle.fill")
                                                     .font(.caption.weight(.semibold)).foregroundStyle(.red)
-                                                Button { approvePatch(for: item) } label: {
-                                                    Label("Försök skapa PR igen", systemImage: "arrow.clockwise")
-                                                        .font(.caption.weight(.semibold))
+                                                if item.patchFailureDetails?.contains("Verify base is still current") == true {
+                                                    Text("Projektets main-branch har ändrats sedan förslaget granskades. Skicka inte samma förslag igen – uppdatera analysen så att Byte skapar en ny diff mot aktuell kod.")
+                                                        .font(.caption2).foregroundStyle(.orange)
+                                                } else {
+                                                    Button { approvePatch(for: item) } label: {
+                                                        Label("Försök skapa PR igen", systemImage: "arrow.clockwise")
+                                                            .font(.caption.weight(.semibold))
+                                                    }
+                                                    .tint(StudioTheme.accent)
+                                                    .disabled(item.baseCommitSHA == nil || !patchPreview.contains("--- ") || !patchPreview.contains("+++ "))
                                                 }
-                                                .tint(StudioTheme.accent)
-                                                .disabled(item.baseCommitSHA == nil || !patchPreview.contains("--- ") || !patchPreview.contains("+++ "))
                                             }
                                         default:
                                             Button { approvePatch(for: item) } label: {
