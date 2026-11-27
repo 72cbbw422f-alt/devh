@@ -11,6 +11,14 @@ private struct ProjectHealthState: Identifiable {
     let checkedAt: Date
     let error: String?
 
+    var isQueued: Bool {
+        ["queued", "requested", "waiting"].contains(workflowStatus)
+    }
+
+    var isRunning: Bool {
+        workflowStatus == "in_progress"
+    }
+
     var statusTitle: String {
         if error != nil { return "Kan inte nå GitHub" }
         guard let workflowConclusion else {
@@ -29,7 +37,7 @@ private struct ProjectHealthState: Identifiable {
         if error != nil { return Color(hex: "E5B86B") }
         if workflowConclusion == "success" { return Color(hex: "6BCB9A") }
         if workflowConclusion == "failure" { return Color(hex: "E56B78") }
-        if workflowStatus == "in_progress" || workflowStatus == "queued" { return Color(hex: "E5B86B") }
+        if isRunning || isQueued { return Color(hex: "E5B86B") }
         return StudioTheme.muted
     }
 }
@@ -43,13 +51,13 @@ struct ProjectHealthOverviewView: View {
     private var attentionStates: [ProjectHealthState] {
         states.filter {
             $0.error != nil || $0.workflowConclusion == "failure" ||
-            $0.workflowStatus == "in_progress" || $0.workflowStatus == "queued" ||
+            $0.isRunning || $0.isQueued ||
             $0.openItemsCount > 0
         }.sorted { lhs, rhs in
             func rank(_ state: ProjectHealthState) -> Int {
                 if state.workflowConclusion == "failure" { return 0 }
                 if state.error != nil { return 1 }
-                if state.workflowStatus == "in_progress" || state.workflowStatus == "queued" { return 2 }
+                if state.isRunning || state.isQueued { return 2 }
                 return 3
             }
             return rank(lhs) < rank(rhs)
@@ -116,7 +124,7 @@ struct ProjectHealthOverviewView: View {
                 Text("Fokusförslag visas när projektstatusen har hämtats.")
                     .font(.caption).foregroundStyle(StudioTheme.muted)
             } else if attentionStates.isEmpty {
-                Label("Inget akut – projekten ser stabila ut", systemImage: "checkmark.circle.fill")
+                Label("Inga fel eller pågående byggningar identifierade", systemImage: "checkmark.circle.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color(hex: "6BCB9A"))
             } else {
@@ -156,7 +164,8 @@ struct ProjectHealthOverviewView: View {
     private func focusReason(for state: ProjectHealthState) -> String {
         if state.workflowConclusion == "failure" { return "Åtgärda felet i senaste bygget." }
         if state.error != nil { return "Kontrollera GitHub-anslutningen." }
-        if state.workflowStatus == "in_progress" || state.workflowStatus == "queued" { return "Byggning pågår eller väntar." }
+        if state.isRunning { return "Byggning pågår." }
+        if state.isQueued { return "Byggning väntar på att starta." }
         return "\(state.openItemsCount) öppna ärenden att gå igenom."
     }
 
