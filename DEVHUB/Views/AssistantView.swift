@@ -831,7 +831,7 @@ struct AssistantView: View {
                     item.updatedAt = .now
                     statusMessage = "GitHub har tagit emot godkännandet. Väntar på att arbetsflödet startar…"
                 }
-                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), token: token) { runID, runURL in
                     await MainActor.run {
                         item.patchWorkflowRunID = runID
                         item.patchWorkflowURL = runURL?.absoluteString
@@ -1231,6 +1231,7 @@ private enum GitHubWorkflowClient {
 
     static func waitForApprovedPatchRun(
         startedAt: Date,
+        expectedTitle: String,
         token: String,
         onRunFound: @escaping (Int, URL?) async -> Void
     ) async throws -> RunResult {
@@ -1248,6 +1249,7 @@ private enum GitHubWorkflowClient {
             if matchedRun == nil {
                 matchedRun = runs.first(where: {
                     $0.event == "workflow_dispatch" &&
+                    $0.display_title == expectedTitle &&
                     (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
                 })
                 if let run = matchedRun {
