@@ -29,6 +29,7 @@ struct AssistantView: View {
     @State private var workflowURL: URL?
     @State private var runStatus: String?
     @State private var analysisText: String?
+    @State private var analysisTaskProposalJSON: String?
     @State private var continuingFromResponseID: String?
     @AppStorage("byte.workMode") private var workMode = "approval"
     @AppStorage("byte.allowAutomaticBuilds") private var allowAutomaticBuilds = true
@@ -107,9 +108,9 @@ struct AssistantView: View {
                         .foregroundStyle(StudioTheme.secondaryText)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        if analysisText.contains("DEVHUB_TASKS_BEGIN") {
+                        if let proposalJSON = analysisTaskProposalJSON {
                             Button {
-                                importByteTaskProposals(from: analysisText)
+                                importByteTaskProposals(json: proposalJSON)
                             } label: {
                                 Label("Lägg Bytes uppgifter i arbetslistan", systemImage: "checklist")
                                     .font(.subheadline.weight(.semibold))
@@ -480,9 +481,9 @@ struct AssistantView: View {
                                 }
                                 .font(.caption.weight(.semibold))
                                 .tint(StudioTheme.accentCyan)
-                                if analysis.contains("DEVHUB_TASKS_BEGIN") {
+                                if let proposalJSON = item.taskProposalJSON {
                                     Button {
-                                        importByteTaskProposals(from: analysis, repository: item.projectRepository)
+                                        importByteTaskProposals(json: proposalJSON, repository: item.projectRepository)
                                     } label: {
                                         Label("Importera Bytes uppgifter", systemImage: "checklist")
                                             .font(.caption.weight(.semibold))
@@ -608,6 +609,7 @@ struct AssistantView: View {
                         await MainActor.run {
                             let responseID = extractResponseID(from: analysis)
                             applyUsage(from: analysis, to: item)
+                            item.taskProposalJSON = extractTaskProposalJSON(from: analysis)
                             item.analysisText = cleanAnalysis(from: analysis, responseID: responseID)
                             item.patchPreview = extractPatchPreview(from: analysis)
                             item.baseCommitSHA = extractBaseSHA(from: analysis)
@@ -672,8 +674,27 @@ struct AssistantView: View {
         item.costUSD = usage["cost_usd"] as? Double ?? item.costUSD
     }
 
+    private func extractTaskProposalJSON(from text: String) -> String? {
+        guard let start = text.range(of: "<!-- DEVHUB_TASKS_BEGIN -->"),
+              let end = text.range(of: "<!-- DEVHUB_TASKS_END -->"),
+              start.upperBound <= end.lowerBound else { return nil }
+        let value = String(text[start.upperBound..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = value.data(using: .utf8),
+              (try? JSONSerialization.jsonObject(with: data)) is [[String: Any]] else { return nil }
+        return value
+    }
+
     private func cleanAnalysis(from text: String, responseID: String?) -> String {
         var cleaned = text
+        let technicalMarkers = [
+            "<!-- DEVHUB_TASKS_BEGIN -->",
+            "<!-- DEVHUB_TASKS_END -->"
+        ]
+        if let start = cleaned.range(of: technicalMarkers[0]),
+           let end = cleaned.range(of: technicalMarkers[1]),
+           start.lowerBound <= end.upperBound {
+            cleaned.removeSubrange(start.lowerBound..<end.upperBound)
+        }
         if let baseSHA = extractBaseSHA(from: cleaned) {
             cleaned = cleaned.replacingOccurrences(of: "<!-- DEVHUB_BASE_SHA:\(baseSHA) -->", with: "")
         }
@@ -684,7 +705,14 @@ struct AssistantView: View {
            let end = cleaned[marker.upperBound...].range(of: " -->") {
             cleaned.removeSubrange(marker.lowerBound..<end.upperBound)
         }
-        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: .whitespacesAndNewlines)
+        let lines = cleaned.components(separatedBy: .newlines).filter { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return trimmed != "# DEVHUB AI analysis"
+                && !trimmed.hasPrefix("**Project:**")
+                && !trimmed.hasPrefix("**Task:**")
+                && !trimmed.hasPrefix("**Working mode:**")
+        }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var workModeDescription: String {
@@ -854,14 +882,7 @@ struct AssistantView: View {
         }
     }
 
-    private func importByteTaskProposals(from analysis: String, repository: String? = nil) {
-        guard let start = analysis.range(of: "<!-- DEVHUB_TASKS_BEGIN -->"),
-              let end = analysis.range(of: "<!-- DEVHUB_TASKS_END -->"),
-              start.upperBound <= end.lowerBound else {
-            statusMessage = "Byte saknar ett giltigt uppgiftsförslag."
-            return
-        }
-        let json = String(analysis[start.upperBound..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+    private func importByteTaskProposals(json: String, repository: String? = nil) {
         guard let data = json.data(using: .utf8),
               let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             statusMessage = "Bytes uppgiftsförslag kunde inte läsas."
