@@ -25,6 +25,7 @@ final class ByteWorkItem {
     var patchWorkflowURL: String?
     var patchPullRequestURL: String?
     var patchDispatchedAt: Date?
+    var patchFailureDetails: String?
 
     var workModeLabel: String {
         switch workModeRawValue {
@@ -63,5 +64,6 @@ final class ByteWorkItem {
         patchWorkflowURL = nil
         patchPullRequestURL = nil
         patchDispatchedAt = nil
+        patchFailureDetails = nil
     }
 }
