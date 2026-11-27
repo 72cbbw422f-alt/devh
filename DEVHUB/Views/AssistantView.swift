@@ -20,6 +20,7 @@ struct AssistantView: View {
     @State private var queueFilter = "Alla"
     @State private var queueSearch = ""
     @State private var queueProjectFilter = "Alla projekt"
+    @State private var queueContentFilter = "Alla innehåll"
     @State private var showsAllQueueItems = false
     @State private var isRefreshingQueue = false
     @State private var refreshingPatchItemIDs: Set<String> = []
@@ -426,6 +427,14 @@ struct AssistantView: View {
                 }
             }
             .pickerStyle(.menu).tint(StudioTheme.accent)
+            Picker("Innehåll", selection: $queueContentFilter) {
+                Text("Alla innehåll").tag("Alla innehåll")
+                Text("Har analys").tag("Har analys")
+                Text("Har kodförslag").tag("Har kodförslag")
+                Text("Har både analys och kodförslag").tag("Har båda")
+            }
+            .pickerStyle(.menu)
+            .tint(StudioTheme.accentCyan)
             HStack(spacing: 8) {
                 queueMetric(title: "Aktiva", count: byteWorkItems.filter { $0.statusRawValue == "queued" || $0.statusRawValue == "running" }.count, color: StudioTheme.accent)
                 queueMetric(title: "PR väntar", count: byteWorkItems.filter { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count, color: .orange)
@@ -503,15 +512,16 @@ struct AssistantView: View {
             .pickerStyle(.segmented)
             if filteredQueueItems.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(queueSearch.isEmpty && queueFilter == "Alla" && queueProjectFilter == "Alla projekt"
+                    Text(queueSearch.isEmpty && queueFilter == "Alla" && queueProjectFilter == "Alla projekt" && queueContentFilter == "Alla innehåll"
                          ? "Inga uppdrag ännu. Skicka ett uppdrag till Byte så visas det här."
                          : "Inga uppdrag matchar dina filter.")
                         .font(.caption).foregroundStyle(StudioTheme.muted)
-                    if !queueSearch.isEmpty || queueFilter != "Alla" || queueProjectFilter != "Alla projekt" {
+                    if !queueSearch.isEmpty == false || queueFilter != "Alla" || queueProjectFilter != "Alla projekt" || queueContentFilter != "Alla innehåll" {
                         Button {
                             queueSearch = ""
                             queueFilter = "Alla"
                             queueProjectFilter = "Alla projekt"
+                            queueContentFilter = "Alla innehåll"
                             showsAllQueueItems = false
                         } label: {
                             Label("Rensa alla filter", systemImage: "line.3.horizontal.decrease.circle")
@@ -1029,6 +1039,15 @@ struct AssistantView: View {
             default: matchesStatus = true
             }
             let matchesProject = queueProjectFilter == "Alla projekt" || item.projectRepository == queueProjectFilter
+            let hasAnalysis = !(item.analysisText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            let hasPatch = !(item.patchPreview?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            let matchesContent: Bool
+            switch queueContentFilter {
+            case "Har analys": matchesContent = hasAnalysis
+            case "Har kodförslag": matchesContent = hasPatch
+            case "Har båda": matchesContent = hasAnalysis && hasPatch
+            default: matchesContent = true
+            }
             let query = queueSearch.trimmingCharacters(in: .whitespacesAndNewlines)
             let searchableText = [
                 item.title,
@@ -1040,7 +1059,7 @@ struct AssistantView: View {
             ]
             let matchesSearch = query.isEmpty
                 || searchableText.contains { $0.localizedCaseInsensitiveContains(query) }
-            return matchesStatus && matchesProject && matchesSearch
+            return matchesStatus && matchesProject && matchesContent && matchesSearch
         }
     }
 
