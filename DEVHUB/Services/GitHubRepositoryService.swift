@@ -22,7 +22,12 @@ struct GitHubRepositorySnapshot: Decodable, Sendable {
 
 struct GitHubCommitSnapshot: Decodable, Sendable {
     struct Commit: Decodable, Sendable {
+        struct Author: Decodable, Sendable {
+            let name: String?
+            let date: Date?
+        }
         let message: String
+        let author: Author?
     }
     let htmlURL: URL
     let commit: Commit
@@ -39,11 +44,17 @@ struct GitHubWorkflowRunSnapshot: Decodable, Sendable {
     let htmlURL: URL
     let status: String
     let conclusion: String?
+    let runNumber: Int?
+    let headBranch: String?
+    let createdAt: Date?
+    let updatedAt: Date?
     enum CodingKeys: String, CodingKey {
-        case id, name
+        case id, name, status, conclusion
         case htmlURL = "html_url"
-        case status
-        case conclusion
+        case runNumber = "run_number"
+        case headBranch = "head_branch"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
 }
 
