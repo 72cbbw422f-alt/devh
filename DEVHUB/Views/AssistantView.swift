@@ -856,7 +856,7 @@ struct AssistantView: View {
         let pendingItems = byteWorkItems.filter {
             guard let runID = $0.workflowRunID else { return false }
             return $0.statusRawValue == "running" ||
-                ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
+                ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
                 ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
         }
         guard !pendingItems.isEmpty else { return }
