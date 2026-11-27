@@ -241,7 +241,7 @@ struct GitHubActivityFeedView: View {
                 Link(destination: work.htmlURL) {
                     HStack(spacing: 6) {
                         Image(systemName: work.symbol)
-                        Text("#\\(work.number) · \\(work.title)")
+                        Text("#\(work.number) · \(work.title)")
                             .lineLimit(1)
                         Spacer(minLength: 4)
                         Text(work.updatedAt, style: .relative)
