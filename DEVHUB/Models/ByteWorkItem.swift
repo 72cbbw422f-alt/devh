@@ -12,6 +12,7 @@ final class ByteWorkItem {
     var workflowURL: String?
     var workflowRunID: Int?
     var analysisText: String?
+    var taskProposalJSON: String?
     var workModeRawValue: String = "approval"
     var conversationResponseID: String?
     var inputTokens: Int = 0
@@ -52,6 +53,7 @@ final class ByteWorkItem {
         workflowURL = nil
         workflowRunID = nil
         analysisText = nil
+        taskProposalJSON = nil
         workModeRawValue = workMode
         conversationResponseID = nil
         baseCommitSHA = nil
