@@ -10,6 +10,7 @@ private struct GitHubActivityItem: Identifiable {
     let commitAuthor: String?
     let pushedAt: Date?
     let workflowLabel: String?
+    let workflowContext: String?
     let workflowURL: URL?
     let workflowSucceeded: Bool?
     let openWorkItems: [GitHubOpenWorkItem]
@@ -138,6 +139,12 @@ struct GitHubActivityFeedView: View {
                     .lineLimit(2)
                 if let author = item.commitAuthor, !author.isEmpty {
                     Label("Commit av \(author)", systemImage: "person")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(StudioTheme.muted)
+                        .lineLimit(1)
+                }
+                if let workflowContext = item.workflowContext, !workflowContext.isEmpty {
+                    Label(workflowContext, systemImage: "hammer")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(StudioTheme.muted)
                         .lineLimit(1)
@@ -338,6 +345,14 @@ struct GitHubActivityFeedView: View {
                     commitAuthor: result.1?.commit.author?.name,
                     pushedAt: result.0.pushedAt,
                     workflowLabel: workflowLabel,
+                    workflowContext: workflow.map { run in
+                        [
+                            run.runNumber.map { "Run #\($0)" },
+                            run.headBranch
+                        ]
+                        .compactMap { $0 }
+                        .joined(separator: " · ")
+                    },
                     workflowURL: workflow?.htmlURL,
                     workflowSucceeded: workflow == nil ? nil : workflowSucceeded,
                     openWorkItems: openWorkItems,
