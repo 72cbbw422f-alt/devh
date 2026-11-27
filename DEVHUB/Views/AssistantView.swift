@@ -176,12 +176,13 @@ struct AssistantView: View {
                 }
             }
             Picker("Arbetsläge", selection: $workMode) {
+                Text("Snabbt svar").tag("quick")
                 Text("Samarbeta").tag("collaborate")
                 Text("Godkänn först").tag("approval")
                 Text("Autopilot").tag("autopilot")
-            }.pickerStyle(.segmented)
+            }.pickerStyle(.menu)
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: workMode == "autopilot" ? "sparkles" : (workMode == "collaborate" ? "messages" : "hand.raised.fill"))
+                Image(systemName: workMode == "quick" ? "bolt.fill" : (workMode == "autopilot" ? "sparkles" : (workMode == "collaborate" ? "messages" : "hand.raised.fill")))
                     .foregroundStyle(StudioTheme.accent)
                 Text(workModeDescription)
                     .font(.caption).foregroundStyle(StudioTheme.secondaryText)
@@ -688,6 +689,8 @@ struct AssistantView: View {
 
     private var workModeDescription: String {
         switch workMode {
+        case "quick":
+            return "Snabbt svar: För enkla allmänna frågor. Byte hoppar över projektinläsning och ger ett kortare svar."
         case "collaborate":
             return "Samarbeta: Fortsätt samma konversation med Byte. Tidigare sammanhang följer med när du väljer Fortsätt samtal."
         case "autopilot":
