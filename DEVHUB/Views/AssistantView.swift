@@ -411,7 +411,8 @@ struct AssistantView: View {
                                 Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(StudioTheme.accentCyan)
-                            }                            if let savedAnalysis = item.analysisText, !savedAnalysis.isEmpty {
+                            }
+                            if let savedAnalysis = item.analysisText, !savedAnalysis.isEmpty {
                                 Button {
                                     analysisText = savedAnalysis
                                     analysisTaskProposalJSON = item.taskProposalJSON
