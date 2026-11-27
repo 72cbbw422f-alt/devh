@@ -1153,9 +1153,9 @@ private enum GitHubWorkflowClient {
     }
 
     static func fetchFailureSummary(runID: Int, token: String) async throws -> String {
-        let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\\(runID)/jobs?per_page=50")!
+        let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)/jobs?per_page=50")!
         var request = URLRequest(url: endpoint)
-        request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -1166,13 +1166,13 @@ private enum GitHubWorkflowClient {
         let failures = jobs.flatMap { job -> [String] in
             let failedSteps = (job.steps ?? []).filter { $0.conclusion == "failure" }.map { $0.name }
             if failedSteps.isEmpty && job.conclusion == "failure" {
-                return ["\\(job.name): jobbet misslyckades (ingen enskild felande steg rapporterades)."]
+                return ["\(job.name): jobbet misslyckades (ingen enskild felande steg rapporterades)."]
             }
-            return failedSteps.map { "\\(job.name) → \\($0)" }
+            return failedSteps.map { "\(job.name) → \($0)" }
         }
         return failures.isEmpty
             ? "GitHub markerade körningen som misslyckad men rapporterade inget specifikt felsteg. Öppna körningen för fullständiga loggar."
-            : failures.joined(separator: "\\n")
+            : failures.joined(separator: "\n")
     }
 
     static func fetchRunStatus(runID: Int, token: String) async throws -> RunStatus {
