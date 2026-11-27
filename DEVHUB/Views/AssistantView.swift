@@ -34,9 +34,6 @@ struct AssistantView: View {
     @State private var continuingFromResponseID: String?
     @State private var continuingFromTitle: String?
     @AppStorage("byte.workMode") private var workMode = "approval"
-    @AppStorage("byte.allowAutomaticBuilds") private var allowAutomaticBuilds = true
-    @AppStorage("byte.allowAutomaticPullRequests") private var allowAutomaticPullRequests = false
-    @AppStorage("byte.alwaysConfirmDestructive") private var alwaysConfirmDestructive = true
     @AppStorage("byte.monthlyBudget") private var monthlyBudget = 200.0
     @FocusState private var focusedField: AssistantInput?
 
