@@ -192,14 +192,22 @@ struct AssistantView: View {
                 Text(workModeDescription)
                     .font(.caption).foregroundStyle(StudioTheme.secondaryText)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(11).background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
-            Toggle("Starta byggningar automatiskt", isOn: $allowAutomaticBuilds).tint(StudioTheme.accent)
-            Toggle("Tillåt automatiska pull requests", isOn: $allowAutomaticPullRequests).tint(StudioTheme.accent)
-            Toggle("Kräv alltid godkännande för radering och överskrivning", isOn: $alwaysConfirmDestructive).tint(StudioTheme.accent)
+            Label {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Automatiska byggningar och pull requests")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                    Text("Dessa automatiska funktioner är ännu inte aktiverade. Kodförslag kräver fortsatt ditt uttryckliga godkännande.")
+                        .font(.caption).foregroundStyle(StudioTheme.muted)
+                }
+            } icon: {
+                Image(systemName: "info.circle").foregroundStyle(StudioTheme.accentCyan)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             Divider().overlay(StudioTheme.border)
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Månadsbudget för AI").font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
-                    Text("Budgettak i kronor · lokal inställning").font(.caption).foregroundStyle(StudioTheme.muted)
+                    Text("Månatligt AI-budgetmål").font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                    Text("Egen planering i kronor · ingen automatisk kostnadsspärr").font(.caption).foregroundStyle(StudioTheme.muted)
                 }
                 Spacer()
                 TextField("200", value: $monthlyBudget, format: .number.precision(.fractionLength(0...2)))
@@ -210,7 +218,7 @@ struct AssistantView: View {
                     .padding(9)
                     .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
                     .foregroundStyle(StudioTheme.text)
-                    .accessibilityLabel("Månadsbudget för AI i kronor")
+                    .accessibilityLabel("Månatligt AI-budgetmål i kronor")
                 Text("kr").font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
             }
         }.padding(15).frame(maxWidth: .infinity, alignment: .leading)
