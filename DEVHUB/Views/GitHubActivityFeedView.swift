@@ -7,6 +7,7 @@ private struct GitHubActivityItem: Identifiable {
     let repositoryURL: URL
     let commitURL: URL?
     let message: String?
+    let commitAuthor: String?
     let pushedAt: Date?
     let workflowLabel: String?
     let workflowURL: URL?
@@ -135,6 +136,12 @@ struct GitHubActivityFeedView: View {
                 Text(item.message ?? "Repository uppdaterat")
                     .font(.caption).foregroundStyle(StudioTheme.secondaryText)
                     .lineLimit(2)
+                if let author = item.commitAuthor, !author.isEmpty {
+                    Label("Commit av \(author)", systemImage: "person")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(StudioTheme.muted)
+                        .lineLimit(1)
+                }
                 repositoryLinks(item)
                 openWorkSection(item.openWorkItems)
                 dataWarningSection(item.dataWarnings)
@@ -173,11 +180,23 @@ struct GitHubActivityFeedView: View {
     }
 
     private func workflowSymbol(_ item: GitHubActivityItem) -> String {
-        item.workflowSucceeded == true ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
+        if item.workflowSucceeded == true { return "checkmark.circle.fill" }
+        guard let label = item.workflowLabel else { return "questionmark.circle" }
+        if label.contains("pågår") { return "arrow.triangle.2.circlepath" }
+        if label.contains("köad") { return "clock" }
+        if label.contains("misslyckad") || label.contains("timeout") { return "xmark.circle.fill" }
+        if label.contains("avbruten") || label.contains("hoppad") { return "minus.circle" }
+        return "exclamationmark.circle.fill"
     }
 
     private func workflowColor(_ item: GitHubActivityItem) -> Color {
-        item.workflowSucceeded == true ? Color(hex: "6BCB9A") : Color(hex: "E5B86B")
+        if item.workflowSucceeded == true { return Color(hex: "6BCB9A") }
+        guard let label = item.workflowLabel else { return StudioTheme.muted }
+        if label.contains("pågår") { return StudioTheme.accentCyan }
+        if label.contains("köad") { return Color(hex: "E5B86B") }
+        if label.contains("misslyckad") || label.contains("timeout") { return Color(hex: "E47777") }
+        if label.contains("avbruten") || label.contains("hoppad") { return StudioTheme.muted }
+        return Color(hex: "E5B86B")
     }
 
     @ViewBuilder
@@ -295,8 +314,20 @@ struct GitHubActivityFeedView: View {
                 }
                 let workflowSucceeded = workflow?.conclusion == "success"
                 let workflowLabel = workflow.map { run in
-                    if run.status != "completed" { return "Actions körs" }
-                    return run.conclusion == "success" ? "Actions OK" : "Actions: \(run.conclusion ?? "okänt")"
+                    switch run.status {
+                    case "queued", "requested", "waiting": return "Actions köad"
+                    case "in_progress": return "Actions pågår"
+                    case "completed":
+                        switch run.conclusion {
+                        case "success": return "Actions godkänd"
+                        case "failure": return "Actions misslyckad"
+                        case "cancelled": return "Actions avbruten"
+                        case "timed_out": return "Actions timeout"
+                        case "skipped": return "Actions hoppad över"
+                        default: return "Actions: \(run.conclusion ?? "okänt")"
+                        }
+                    default: return "Actions: \(run.status)"
+                    }
                 }
                 let activity = GitHubActivityItem(
                     id: project.id,
@@ -304,6 +335,7 @@ struct GitHubActivityFeedView: View {
                     repositoryURL: result.0.htmlURL,
                     commitURL: result.1?.htmlURL,
                     message: result.1?.commit.message.components(separatedBy: .newlines).first,
+                    commitAuthor: result.1?.commit.author?.name,
                     pushedAt: result.0.pushedAt,
                     workflowLabel: workflowLabel,
                     workflowURL: workflow?.htmlURL,
