@@ -202,9 +202,8 @@ jobs:
               summary.write(answer + "\n")
           response_id = data.get("id", "")
           with open("analysis.md", "w", encoding="utf-8") as result:
-              result.write("# DEVHUB AI analysis\n\n")
-              result.write("**Project:** " + os.environ["PROJECT_REPOSITORY"] + "\n\n")
-              result.write("**Task:** " + os.environ["TASK"] + "\n\n")
+              # Keep the user-facing artifact clean. Project/task metadata belongs
+              # in the GitHub workflow summary, not in Byte's displayed analysis.
               result.write(answer + "\n")
               result.write("\n<!-- DEVHUB_BASE_SHA:" + os.environ["PROJECT_BASE_SHA"] + " -->\n")
               if response_id:
