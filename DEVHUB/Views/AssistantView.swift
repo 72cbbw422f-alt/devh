@@ -905,14 +905,58 @@ struct AssistantView: View {
             statusMessage = "GitHub-token saknas. Spara den först."
             return
         }
-        guard let startedAt = item.patchDispatchedAt else {
-            statusMessage = "Tidpunkten för godkännandet saknas. Skapa en ny analys innan du försöker igen."
-            return
-        }
         statusMessage = "Kontrollerar GitHub-status…"
         Task {
             do {
-                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), token: token) { runID, runURL in
+                // Once GitHub has supplied a run ID, poll that exact run. Do not
+                // rediscover it by title/date: that can miss older or delayed runs.
+                if let runID = item.patchWorkflowRunID {
+                    let status = try await GitHubWorkflowClient.fetchRunStatus(runID: runID, token: token)
+                    await MainActor.run {
+                        item.patchWorkflowURL = status.url?.absoluteString ?? item.patchWorkflowURL
+                        item.patchStatusRawValue = status.status == "completed"
+                            ? (status.conclusion == "success" ? "completed" : "failed")
+                            : "running"
+                        item.updatedAt = .now
+                    }
+                    guard status.status == "completed" else {
+                        await MainActor.run {
+                            statusMessage = "GitHub-körningen pågår fortfarande. Statusen har uppdaterats."
+                        }
+                        return
+                    }
+                    let succeeded = status.conclusion == "success"
+                    let failureDetails = succeeded ? nil : try? await GitHubWorkflowClient.fetchFailureSummary(runID: runID, token: token)
+                    let pullRequestURL = succeeded
+                        ? await GitHubWorkflowClient.fetchPullRequestURL(repository: item.projectRepository, runID: runID, title: item.title, token: token)
+                        : nil
+                    await MainActor.run {
+                        item.patchFailureDetails = failureDetails
+                        item.patchPullRequestURL = pullRequestURL?.absoluteString ?? item.patchPullRequestURL
+                        statusMessage = succeeded
+                            ? "GitHub-arbetsflödet lyckades. PR-länken har uppdaterats."
+                            : "GitHub-arbetsflödet misslyckades. Felorsaken har hämtats om den var tillgänglig."
+                        modelContext.insert(DEVHUBNotification(
+                            title: succeeded ? "Byte har skapat ett PR-förslag" : "Byte kunde inte skapa PR",
+                            message: statusMessage ?? "",
+                            category: succeeded ? "assistant" : "issue",
+                            destinationURL: status.url?.absoluteString
+                        ))
+                    }
+                    return
+                }
+
+                guard let startedAt = item.patchDispatchedAt else {
+                    await MainActor.run {
+                        statusMessage = "Tidpunkten för godkännandet saknas. Körningen kan inte matchas säkert."
+                    }
+                    return
+                }
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(
+                    startedAt: startedAt,
+                    expectedTitle: String(item.title.prefix(120)),
+                    token: token
+                ) { runID, runURL in
                     await MainActor.run {
                         item.patchWorkflowRunID = runID
                         item.patchWorkflowURL = runURL?.absoluteString
@@ -933,14 +977,16 @@ struct AssistantView: View {
                     item.updatedAt = .now
                     statusMessage = result.message
                     modelContext.insert(DEVHUBNotification(
-                        title: result.message.contains("lyckades") ? "Byte har skapat ett PR-förslag" : "Byte kunde inte skapa PR",
+                        title: succeeded ? "Byte har skapat ett PR-förslag" : "Byte kunde inte skapa PR",
                         message: result.message,
-                        category: result.message.contains("lyckades") ? "assistant" : "issue",
+                        category: succeeded ? "assistant" : "issue",
                         destinationURL: result.url?.absoluteString
                     ))
                 }
             } catch {
-                await MainActor.run { statusMessage = "Statusen kunde inte bekräftas: \(error.localizedDescription)" }
+                await MainActor.run {
+                    statusMessage = "Statusen kunde inte bekräftas: \\(error.localizedDescription)"
+                }
             }
         }
     }
