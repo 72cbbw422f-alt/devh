@@ -416,6 +416,30 @@ struct AssistantView: View {
                 queueMetric(title: "Klara", count: byteWorkItems.filter { $0.statusRawValue == "completed" || $0.patchStatusRawValue == "completed" }.count, color: StudioTheme.accentCyan)
                 queueMetric(title: "Fel", count: byteWorkItems.filter { $0.statusRawValue == "failed" || $0.patchStatusRawValue == "failed" }.count, color: .red)
             }
+            let recordedUsageItems = byteWorkItems.filter { $0.inputTokens > 0 || $0.outputTokens > 0 }
+            let recordedCostUSD = recordedUsageItems.reduce(0.0) { $0 + $1.costUSD }
+            let recordedInputTokens = recordedUsageItems.reduce(0) { $0 + $1.inputTokens }
+            let recordedOutputTokens = recordedUsageItems.reduce(0) { $0 + $1.outputTokens }
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Label("Registrerad AI-användning", systemImage: "chart.bar.xaxis")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(StudioTheme.text)
+                    Spacer()
+                    Text("$\\(recordedCostUSD, format: .number.precision(.fractionLength(5)))")
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(StudioTheme.accentCyan)
+                }
+                Text("\\(recordedUsageItems.count) uppdrag med kostnadsdata · \\(recordedInputTokens.formatted()) in · \\(recordedOutputTokens.formatted()) ut")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(StudioTheme.secondaryText)
+                Text("Summering av sparad användningsdata i arbetskön. Beloppet visas i USD och är ingen faktura eller kostnadsspärr.")
+                    .font(.caption2)
+                    .foregroundStyle(StudioTheme.muted)
+            }
+            .padding(11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
             Picker("Visa", selection: $queueFilter) {
                 Text("Alla").tag("Alla")
                 Text("Aktiva").tag("Aktiva")
