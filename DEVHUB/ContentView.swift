@@ -172,7 +172,7 @@ struct ContentView: View {
     private func tabContent(for tab: StudioTab) -> some View {
         switch tab {
         case .overview:
-            OverviewView(projects: projects) { selectedProject = $0 }
+            OverviewView(projects: projects, onSelect: { selectedProject = $0 }, onShowActivity: { selection = .activity })
         case .projects:
             ProjectListView { selectedProject = $0 }
         case .assistant:
