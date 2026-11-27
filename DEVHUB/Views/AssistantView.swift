@@ -536,16 +536,19 @@ struct AssistantView: View {
             } else {
                 ForEach(showsAllQueueItems ? filteredQueueItems : Array(filteredQueueItems.prefix(12))) { item in
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: queueSymbol(item.statusRawValue))
-                            .foregroundStyle(queueColor(item.statusRawValue))
+                        Image(systemName: queueHistorySymbol(for: item))
+                            .foregroundStyle(queueHistoryColor(for: item))
                             .frame(width: 18)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.title)
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(StudioTheme.text)
                                 .lineLimit(3)
-                            Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.workModeLabel + " · " + item.statusLabel)
+                            Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.workModeLabel)
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
+                            Label(queueHistoryStatusLabel(for: item), systemImage: queueHistorySymbol(for: item))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(queueHistoryColor(for: item))
                             HStack(spacing: 6) {
                                 if item.analysisText != nil && item.patchPreview != nil {
                                     Label("Analys + kodförslag", systemImage: "doc.text.magnifyingglass")
@@ -1093,6 +1096,32 @@ struct AssistantView: View {
         default: StudioTheme.muted
         }
     }
+    private func queueHistoryStatusLabel(for item: ByteWorkItem) -> String {
+        if item.patchStatusRawValue == "failed" { return "PR misslyckades" }
+        if item.statusRawValue == "failed" { return "Analysen misslyckades" }
+        if item.patchStatusRawValue == "completed" { return "PR skapad · inväntar granskning" }
+        if item.patchStatusRawValue == "running" { return "GitHub skapar PR" }
+        if item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "dispatching" {
+            return "PR-arbete väntar"
+        }
+        return item.statusLabel
+    }
+
+    private func queueHistorySymbol(for item: ByteWorkItem) -> String {
+        if item.patchStatusRawValue == "failed" || item.statusRawValue == "failed" { return "exclamationmark.circle.fill" }
+        if item.patchStatusRawValue == "completed" || item.statusRawValue == "completed" { return "checkmark.circle.fill" }
+        if item.patchStatusRawValue == "running" || item.statusRawValue == "running" { return "arrow.triangle.2.circlepath" }
+        return "clock"
+    }
+
+    private func queueHistoryColor(for item: ByteWorkItem) -> Color {
+        if item.patchStatusRawValue == "failed" || item.statusRawValue == "failed" { return .red }
+        if item.patchStatusRawValue == "completed" || item.statusRawValue == "completed" { return StudioTheme.accentCyan }
+        if item.patchStatusRawValue == "running" || item.statusRawValue == "running" { return StudioTheme.accent }
+        if item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "dispatching" { return .orange }
+        return StudioTheme.muted
+    }
+
     private func queueSymbol(_ status: String) -> String {
         switch status {
         case "running": "arrow.triangle.2.circlepath"
