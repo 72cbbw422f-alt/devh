@@ -327,6 +327,7 @@ struct AssistantView: View {
                     .font(.caption.monospacedDigit()).foregroundStyle(StudioTheme.muted)
                 Button {
                     refreshQueueStatuses()
+                    refreshPendingApprovedPatchStatuses()
                 } label: {
                     if isRefreshingQueue {
                         ProgressView().tint(StudioTheme.accent)
@@ -341,6 +342,18 @@ struct AssistantView: View {
                         ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
                 }))
                 .accessibilityLabel("Uppdatera arbetskön")
+            }
+            let pendingPatchCount = byteWorkItems.filter { $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count
+            if pendingPatchCount > 0 {
+                Label("Automatisk GitHub-kontroll aktiv · \\(pendingPatchCount) väntande förslag · var 60:e sekund", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(StudioTheme.accentCyan)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Label("Automatisk GitHub-kontroll aktiv · var 60:e sekund", systemImage: "checkmark.icloud")
+                    .font(.caption2)
+                    .foregroundStyle(StudioTheme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             TextField("Sök uppdrag eller analys", text: $queueSearch)
                 .textFieldStyle(.plain)
