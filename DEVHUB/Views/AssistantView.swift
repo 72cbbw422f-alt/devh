@@ -685,7 +685,7 @@ struct AssistantView: View {
                                             Link("Följ GitHub-jobbet", destination: url)
                                                 .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
                                         }
-                                        if let details = item.patchFailureDetails {
+                                        if queueHasPatchFailureDetails(item), let details = item.patchFailureDetails {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Label("Felorsak", systemImage: "exclamationmark.triangle.fill")
                                                     .font(.caption.weight(.semibold)).foregroundStyle(.red)
@@ -712,7 +712,7 @@ struct AssistantView: View {
                                 }
                             }
                             if item.statusRawValue == "failed", let runID = item.workflowRunID {
-                                if let details = item.workflowFailureDetails {
+                                if queueHasWorkflowFailureDetails(item), let details = item.workflowFailureDetails {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Label("Felorsak", systemImage: "exclamationmark.triangle.fill")
                                             .font(.caption.weight(.semibold))
@@ -857,7 +857,7 @@ struct AssistantView: View {
             guard let runID = $0.workflowRunID else { return false }
             return $0.statusRawValue == "running" ||
                 ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
-                ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
+                ($0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
         }
         guard !pendingItems.isEmpty else { return }
         isRefreshingQueue = true
