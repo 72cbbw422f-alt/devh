@@ -995,10 +995,16 @@ struct AssistantView: View {
             }
             let matchesProject = queueProjectFilter == "Alla projekt" || item.projectRepository == queueProjectFilter
             let query = queueSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+            let searchableText = [
+                item.title,
+                item.projectRepository,
+                item.analysisText ?? "",
+                item.workflowFailureDetails ?? "",
+                item.patchFailureDetails ?? "",
+                item.patchPreview ?? ""
+            ]
             let matchesSearch = query.isEmpty
-                || item.title.localizedCaseInsensitiveContains(query)
-                || item.projectRepository.localizedCaseInsensitiveContains(query)
-                || (item.analysisText?.localizedCaseInsensitiveContains(query) ?? false)
+                || searchableText.contains { $0.localizedCaseInsensitiveContains(query) }
             return matchesStatus && matchesProject && matchesSearch
         }
     }
