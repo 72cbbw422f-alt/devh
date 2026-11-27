@@ -178,7 +178,7 @@ struct ContentView: View {
         case .assistant:
             AssistantView()
         case .activity:
-            PlaceholderView(tab: tab)
+            GitHubActivityFeedView(projects: projects)
         case .roadmap:
             RoadmapView(projects: projects) { selectedProject = $0 }
         case .revenue:
