@@ -73,3 +73,16 @@ The initial AI workflow is read-only. Later code-writing support will use a sepa
 5. Studio analytics and optional financial integrations.
 
 Repository: https://github.com/72cbbw422f-alt/devh
+
+
+## PR verification test fixture
+
+This documentation-only change exercises DEVHUB's GitHub pull-request verification flow.
+
+Test sequence:
+1. Open a pull request from `test/pr-verification-docs` into `main`.
+2. Wait for all required GitHub checks to complete successfully.
+3. Merge only after explicit approval from the project owner.
+4. Paste the merged pull-request URL into a DEVHUB task and run GitHub verification.
+
+Expected result: unmerged pull requests, failed checks, and incomplete checks must not verify a task. A merged pull request with all checks successful may verify a task.
