@@ -3,6 +3,7 @@ import SwiftUI
 struct OverviewView: View {
     let projects: [StudioProject]
     let onSelect: (StudioProject) -> Void
+    let onShowActivity: () -> Void
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private var columns: [GridItem] {
@@ -43,8 +44,20 @@ struct OverviewView: View {
                     }
                 }
                 ProjectHealthOverviewView(projects: projects)
-                SectionHeading(eyebrow: "SENASTE", title: "Senaste aktivitet")
-                GitHubActivityFeedView(projects: projects)
+                HStack(alignment: .center) {
+                    SectionHeading(eyebrow: "GITHUB", title: "Senaste aktivitet")
+                    Spacer()
+                    Button(action: onShowActivity) {
+                        Label("Visa flödet", systemImage: "arrow.up.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(StudioTheme.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text("Se commits, GitHub Actions, pull requests och issues samlat under Utveckling.")
+                    .font(.caption)
+                    .foregroundStyle(StudioTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(horizontalSizeClass == .regular ? 28 : 18)
             .frame(maxWidth: 1180)
