@@ -101,6 +101,11 @@ struct ContentView: View {
                 tabContent(for: selection)
                     .navigationTitle(selection.rawValue)
                     .navigationBarTitleDisplayMode(.inline)
+                    // Keep the iPad detail navigation bar fully opaque while
+                    // scroll views move underneath it (avoids the grey scroll-edge material).
+                    .toolbarBackground(StudioTheme.background, for: .navigationBar)
+                    .toolbarBackground(.visible, for: .navigationBar)
+                    .toolbarColorScheme(.dark, for: .navigationBar)
                     .navigationDestination(item: $selectedProject) {
                         ProjectDetailView(project: $0)
                     }
