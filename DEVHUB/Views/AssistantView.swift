@@ -358,7 +358,7 @@ struct AssistantView: View {
                         guard let runID = $0.workflowRunID else { return false }
                         return $0.statusRawValue == "running" ||
                             ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
-                            ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
+                            ($0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
                     }) &&
                     !byteWorkItems.contains(where: { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" })
                 ))
@@ -694,7 +694,7 @@ struct AssistantView: View {
                                             }
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                         }
-                                        if item.patchStatusRawValue == "failed", item.patchFailureDetails == nil,
+                                        if item.patchStatusRawValue == "failed", !queueHasPatchFailureDetails(item),
                                            let runID = item.patchWorkflowRunID {
                                             Button {
                                                 refreshPatchFailureDetails(for: item, runID: runID)
@@ -1052,6 +1052,14 @@ struct AssistantView: View {
         !(item.patchPreview?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
     }
 
+    private func queueHasWorkflowFailureDetails(_ item: ByteWorkItem) -> Bool {
+        !(item.workflowFailureDetails?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
+    private func queueHasPatchFailureDetails(_ item: ByteWorkItem) -> Bool {
+        !(item.patchFailureDetails?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
     private var filteredQueueItems: [ByteWorkItem] {
         byteWorkItems.filter { item in
             let matchesStatus: Bool
@@ -1360,7 +1368,7 @@ struct AssistantView: View {
     }
 
     private func refreshPatchFailureDetails(for item: ByteWorkItem, runID: Int) {
-        guard item.patchFailureDetails == nil else { return }
+        guard !queueHasPatchFailureDetails(item) else { return }
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
             return
