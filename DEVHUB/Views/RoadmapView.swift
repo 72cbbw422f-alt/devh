@@ -42,7 +42,7 @@ struct RoadmapView: View {
     private func taskProgress(for project: StudioProject) -> Double {
         let projectTasks = tasks(for: project)
         guard !projectTasks.isEmpty else { return 0 }
-        return Double(projectTasks.filter(\\.isCompleted).count) / Double(projectTasks.count)
+        return Double(projectTasks.filter(\.isCompleted).count) / Double(projectTasks.count)
     }
 
     var body: some View {
@@ -185,7 +185,7 @@ struct RoadmapView: View {
                             .foregroundStyle(StudioTheme.muted)
                         Spacer()
                         let projectTasks = tasks(for: project)
-                        Text(projectTasks.isEmpty ? "Inga uppgifter" : "\(projectTasks.filter(\\.isCompleted).count)/\(projectTasks.count) klara")
+                        Text(projectTasks.isEmpty ? "Inga uppgifter" : "\(projectTasks.filter(\.isCompleted).count)/\(projectTasks.count) klara")
                             .font(.caption2.monospacedDigit().weight(.medium))
                             .foregroundStyle(StudioTheme.secondaryText)
                     }
