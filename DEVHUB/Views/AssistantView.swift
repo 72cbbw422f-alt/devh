@@ -457,6 +457,16 @@ struct AssistantView: View {
                                             }
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                         }
+                                        if item.patchStatusRawValue == "failed", item.patchFailureDetails == nil,
+                                           let runID = item.patchWorkflowRunID {
+                                            Button {
+                                                refreshPatchFailureDetails(for: item, runID: runID)
+                                            } label: {
+                                                Label("Hämta felorsak från GitHub", systemImage: "arrow.clockwise")
+                                                    .font(.caption.weight(.semibold))
+                                            }
+                                            .tint(StudioTheme.accentCyan)
+                                        }
                                     }
                                     if item.baseCommitSHA == nil {
                                         Text("Kan inte godkännas ännu: grundversionen saknas. Uppdatera analysen.")
@@ -932,6 +942,29 @@ struct AssistantView: View {
                 }
             } catch {
                 await MainActor.run { statusMessage = "Statusen kunde inte bekräftas: \(error.localizedDescription)" }
+            }
+        }
+    }
+
+    private func refreshPatchFailureDetails(for item: ByteWorkItem, runID: Int) {
+        guard item.patchFailureDetails == nil else { return }
+        guard let token = GitHubTokenStore.read() else {
+            statusMessage = "GitHub-token saknas. Spara den först."
+            return
+        }
+        statusMessage = "Hämtar felorsak från GitHub…"
+        Task {
+            do {
+                let details = try await GitHubWorkflowClient.fetchFailureSummary(runID: runID, token: token)
+                await MainActor.run {
+                    item.patchFailureDetails = details
+                    item.updatedAt = .now
+                    statusMessage = "Felorsaken har hämtats och sparats."
+                }
+            } catch {
+                await MainActor.run {
+                    statusMessage = "Felorsaken kunde inte hämtas: \\(error.localizedDescription)"
+                }
             }
         }
     }
