@@ -50,6 +50,7 @@ Om appen visar timeout kan GitHub fortfarande arbeta. Kontrollera den befintliga
 Ett kodförslag visas som en diff – en jämförelse som visar vilka rader som föreslås tas bort och läggas till.
 
 - Läs uppdraget och förslaget innan du godkänner.
+- **Dela kodförslag:** använd delningsknappen vid diffen om du vill skicka eller spara själva patchtexten för separat granskning. Delning godkänner eller tillämpar inte ändringen.
 - Appen visar den granskade grundversionens korta commit-ID. Om projektets huvudgren har ändrats sedan analysen skapades ska förslaget inte kunna användas mot en annan version.
 - Godkännande skapar en separat pull request. Den slås inte ihop automatiskt.
 - GitHub kontrollerar grundversionen innan ändringen behandlas.
