@@ -398,11 +398,27 @@ struct AssistantView: View {
             .padding(11)
             .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
 
-            TextField("Sök uppdrag eller analys", text: $queueSearch)
-                .textFieldStyle(.plain)
-                .padding(11)
-                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
-                .foregroundStyle(StudioTheme.text)
+            HStack(spacing: 9) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(StudioTheme.muted)
+                TextField("Sök uppdrag, analys, fel eller kod", text: $queueSearch)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(StudioTheme.text)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                if !queueSearch.isEmpty {
+                    Button {
+                        queueSearch = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(StudioTheme.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Rensa sökning")
+                }
+            }
+            .padding(11)
+            .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
             Picker("Projekt", selection: $queueProjectFilter) {
                 Text("Alla projekt").tag("Alla projekt")
                 ForEach(Array(Set(byteWorkItems.map(\.projectRepository))).sorted(), id: \.self) { repository in
