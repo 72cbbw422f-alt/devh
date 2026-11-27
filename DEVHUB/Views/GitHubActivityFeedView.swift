@@ -250,18 +250,25 @@ struct GitHubActivityFeedView: View {
         let service = GitHubRepositoryService()
         for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
-                let result = try await service.fetchSnapshot(repository: project.repository)
+                // Fetch the repository snapshot, latest Actions run and open
+                // issues/PRs concurrently. Serial requests made the dashboard
+                // wait for up to three network round-trips per project.
+                async let snapshotRequest = service.fetchSnapshot(repository: project.repository)
+                async let workflowRequest = service.fetchLatestWorkflowRun(repository: project.repository)
+                async let workItemsRequest = service.fetchOpenWorkItems(repository: project.repository)
+
+                let result = try await snapshotRequest
                 var warnings: [String] = []
                 let workflow: GitHubWorkflowRunSnapshot?
                 do {
-                    workflow = try await service.fetchLatestWorkflowRun(repository: project.repository)
+                    workflow = try await workflowRequest
                 } catch {
                     workflow = nil
                     warnings.append("Actions kunde inte hämtas")
                 }
                 let openWorkItems: [GitHubOpenWorkItem]
                 do {
-                    openWorkItems = try await service.fetchOpenWorkItems(repository: project.repository)
+                    openWorkItems = try await workItemsRequest
                 } catch {
                     openWorkItems = []
                     warnings.append("Issues/PR kunde inte hämtas")
