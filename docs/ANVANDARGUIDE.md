@@ -85,4 +85,4 @@ När du godkänner ett kodförslag kontrollerar GitHub att projektets `main`-bra
 
 ### AI-användning i arbetskön
 
-Arbetskön visar en summering av den användningsdata som sparats för uppdragen: registrerade in- och utgående token samt beräknad kostnad i USD. Summan omfattar bara uppdrag där användningsdata har hämtats och sparats i appen. Den är en uppskattning, inte en faktura, och ersätter inte kontroll av faktisk förbrukning hos AI-leverantören. Budgetmålet i inställningarna är fortfarande endast ett lokalt planeringsvärde.
+Arbetskön visar en summering av den användningsdata som sparats för uppdragen: registrerade in- och utgående token samt beräknad kostnad i USD. Summan omfattar bara uppdrag där användningsdata har hämtats och sparats i appen. Under summeringen kan du fälla ut kostnad per projekt. Projekten sorteras efter högst registrerad kostnad först; varje rad visar antal uppdrag samt in- och utgående token. Projekt utan sparad användningsdata visas inte. Beloppen är uppskattningar, inte en faktura, och ersätter inte kontroll av faktisk förbrukning hos AI-leverantören. Budgetmålet i inställningarna är fortfarande endast ett lokalt planeringsvärde.
