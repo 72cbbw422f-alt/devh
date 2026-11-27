@@ -580,13 +580,14 @@ struct AssistantView: View {
                                 if let responseID = item.conversationResponseID {
                                     Button {
                                         selectedRepository = item.projectRepository
+                                        analysisRepository = item.projectRepository
                                         workMode = "collaborate"
                                         continuingFromResponseID = responseID
                                         task = ""
                                         focusedField = .task
                                         statusMessage = "Du fortsätter nu samtalet med Byte från det här uppdraget."
                                     } label: {
-                                        Label("Fortsätt samtal", systemImage: "bubble.left.and.bubble.right")
+                                        Label("Återuppta Byte-samtal", systemImage: "bubble.left.and.bubble.right")
                                             .font(.caption.weight(.semibold))
                                     }
                                     .tint(StudioTheme.accent)
