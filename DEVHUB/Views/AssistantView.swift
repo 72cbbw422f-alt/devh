@@ -609,6 +609,11 @@ struct AssistantView: View {
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(StudioTheme.accentCyan)
                                 }
+                                ShareLink(item: patchPreview) {
+                                    Label("Dela kodförslag", systemImage: "square.and.arrow.up")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .tint(StudioTheme.accentCyan)
                                 Text("Förhandsvisning – ingen kod har ändrats eller godkänts för incheckning.")
                                     .font(.caption2)
                                     .foregroundStyle(StudioTheme.muted)
