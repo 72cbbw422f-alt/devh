@@ -196,29 +196,43 @@ struct GitHubActivityFeedView: View {
 
     @ViewBuilder
     private func openWorkSection(_ workItems: [GitHubOpenWorkItem]) -> some View {
-        if !workItems.isEmpty {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("ÖPPET ARBETE")
-                    .font(.system(size: 8, weight: .bold))
-                    .tracking(0.8)
-                    .foregroundStyle(StudioTheme.muted)
-                ForEach(workItems) { work in
-                    Link(destination: work.htmlURL) {
-                        HStack(spacing: 6) {
-                            Image(systemName: work.symbol)
-                            Text("\(work.kindLabel) #\(work.number) · \(work.title)")
-                                .lineLimit(1)
-                            Spacer(minLength: 4)
-                            Text(work.updatedAt, style: .relative)
-                                .font(.system(size: 8, weight: .regular))
-                                .foregroundStyle(StudioTheme.muted)
-                        }
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(StudioTheme.secondaryText)
-                    }
+        let pullRequests = workItems.filter { $0.pullRequest != nil }
+        let issues = workItems.filter { $0.pullRequest == nil }
+
+        if !pullRequests.isEmpty || !issues.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                if !pullRequests.isEmpty {
+                    workItemGroup("PULL REQUESTS", items: pullRequests)
+                }
+                if !issues.isEmpty {
+                    workItemGroup("ISSUES", items: issues)
                 }
             }
             .padding(.top, 5)
+        }
+    }
+
+    private func workItemGroup(_ title: String, items: [GitHubOpenWorkItem]) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 8, weight: .bold))
+                .tracking(0.8)
+                .foregroundStyle(StudioTheme.muted)
+            ForEach(items) { work in
+                Link(destination: work.htmlURL) {
+                    HStack(spacing: 6) {
+                        Image(systemName: work.symbol)
+                        Text("#\\(work.number) · \\(work.title)")
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text(work.updatedAt, style: .relative)
+                            .font(.system(size: 8, weight: .regular))
+                            .foregroundStyle(StudioTheme.muted)
+                    }
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(StudioTheme.secondaryText)
+                }
+            }
         }
     }
 
