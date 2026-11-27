@@ -1,6 +1,8 @@
 import SwiftUI
+import SwiftData
 
 struct RoadmapView: View {
+    @Query private var allTasks: [ProjectTaskItem]
     let projects: [StudioProject]
     let onSelect: (StudioProject) -> Void
 
@@ -25,6 +27,24 @@ struct RoadmapView: View {
         return Int(projects.reduce(0) { $0 + $1.progress } / Double(projects.count) * 100)
     }
 
+    private var completedTaskCount: Int {
+        allTasks.filter { $0.isCompleted }.count
+    }
+
+    private var totalTaskCount: Int {
+        allTasks.count
+    }
+
+    private func tasks(for project: StudioProject) -> [ProjectTaskItem] {
+        allTasks.filter { $0.projectID == project.id }
+    }
+
+    private func taskProgress(for project: StudioProject) -> Double {
+        let projectTasks = tasks(for: project)
+        guard !projectTasks.isEmpty else { return 0 }
+        return Double(projectTasks.filter(\\.isCompleted).count) / Double(projectTasks.count)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
@@ -41,7 +61,7 @@ struct RoadmapView: View {
                         }
                     }
                 }
-                Text("Milstolparna visar projektens nuvarande planering. De är inte automatiskt synkroniserade med GitHub ännu.")
+                Text("Planerat framsteg är projektets manuella planeringsvärde. Checklistorna visar sparade uppgifter som markerats klara – de är inte automatiskt verifierade mot GitHub. Byggstatus och commits visas under Utveckling.")
                     .font(.caption)
                     .foregroundStyle(StudioTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -74,7 +94,8 @@ struct RoadmapView: View {
         HStack(spacing: 12) {
             summaryMetric(value: "\(projects.count)", label: "PROJEKT", symbol: "square.stack.3d.up")
             summaryMetric(value: "\(projects.filter { $0.status == .active }.count)", label: "AKTIVA", symbol: "bolt.fill")
-            summaryMetric(value: "\(averageProgress)%", label: "SNITTFRAMSTEG", symbol: "chart.pie")
+            summaryMetric(value: "\(averageProgress)%", label: "PLANERAT SNITT", symbol: "chart.pie")
+            summaryMetric(value: "\(completedTaskCount)/\(totalTaskCount)", label: "UPPGIFTER KLARA", symbol: "checkmark.circle")
         }
     }
 
@@ -97,6 +118,18 @@ struct RoadmapView: View {
         .padding(13)
         .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(StudioTheme.border, lineWidth: 1))
+    }
+
+    private func progressBar(_ progress: Double, color: Color) -> some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(StudioTheme.elevated)
+                Capsule()
+                    .fill(color)
+                    .frame(width: proxy.size.width * min(max(progress, 0), 1))
+            }
+        }
+        .frame(height: 5)
     }
 
     private func roadmapCard(_ project: StudioProject) -> some View {
@@ -125,30 +158,39 @@ struct RoadmapView: View {
                     .background(StudioTheme.elevated, in: Capsule())
             }
 
-            VStack(alignment: .leading, spacing: 7) {
-                HStack {
-                    Text("NÄSTA MILSTOLPE")
-                        .font(.system(size: 8, weight: .bold))
-                        .tracking(1)
-                        .foregroundStyle(StudioTheme.muted)
-                    Spacer()
-                    Text("\(Int(project.progress * 100))%")
-                        .font(.caption.monospacedDigit().weight(.bold))
-                        .foregroundStyle(StudioTheme.text)
-                }
-                Text(project.nextMilestone)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(StudioTheme.secondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(StudioTheme.elevated)
-                        Capsule()
-                            .fill(LinearGradient(colors: [Color(hex: project.accent), StudioTheme.accent], startPoint: .leading, endPoint: .trailing))
-                            .frame(width: proxy.size.width * min(max(project.progress, 0), 1))
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text("NÄSTA MILSTOLPE")
+                            .font(.system(size: 8, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(StudioTheme.muted)
+                        Spacer()
+                        Text("\(Int(project.progress * 100))%")
+                            .font(.caption.monospacedDigit().weight(.bold))
+                            .foregroundStyle(StudioTheme.text)
                     }
+                    Text(project.nextMilestone)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(StudioTheme.secondaryText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    progressBar(project.progress, color: Color(hex: project.accent))
                 }
-                .frame(height: 5)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text("CHECKLISTOR")
+                            .font(.system(size: 8, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(StudioTheme.muted)
+                        Spacer()
+                        let projectTasks = tasks(for: project)
+                        Text(projectTasks.isEmpty ? "Inga uppgifter" : "\(projectTasks.filter(\\.isCompleted).count)/\(projectTasks.count) klara")
+                            .font(.caption2.monospacedDigit().weight(.medium))
+                            .foregroundStyle(StudioTheme.secondaryText)
+                    }
+                    progressBar(taskProgress(for: project), color: StudioTheme.accentCyan)
+                }
             }
 
             HStack {
