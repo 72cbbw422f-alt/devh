@@ -358,7 +358,7 @@ struct AssistantView: View {
                 ))
                 .accessibilityLabel("Uppdatera arbetskön")
             }
-            let pendingPatchCount = byteWorkItems.filter { $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count
+            let pendingPatchCount = byteWorkItems.filter { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count
             if pendingPatchCount > 0 {
                 Label("Automatisk GitHub-kontroll aktiv · \\(pendingPatchCount) väntande förslag · var 60:e sekund", systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption2.weight(.medium))
@@ -384,7 +384,7 @@ struct AssistantView: View {
             .pickerStyle(.menu).tint(StudioTheme.accent)
             HStack(spacing: 8) {
                 queueMetric(title: "Aktiva", count: byteWorkItems.filter { $0.statusRawValue == "queued" || $0.statusRawValue == "running" }.count, color: StudioTheme.accent)
-                queueMetric(title: "PR väntar", count: byteWorkItems.filter { $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count, color: .orange)
+                queueMetric(title: "PR väntar", count: byteWorkItems.filter { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count, color: .orange)
                 queueMetric(title: "Klara", count: byteWorkItems.filter { $0.statusRawValue == "completed" || $0.patchStatusRawValue == "completed" }.count, color: StudioTheme.accentCyan)
                 queueMetric(title: "Fel", count: byteWorkItems.filter { $0.statusRawValue == "failed" || $0.patchStatusRawValue == "failed" }.count, color: .red)
             }
@@ -397,8 +397,27 @@ struct AssistantView: View {
             }
             .pickerStyle(.segmented)
             if filteredQueueItems.isEmpty {
-                Text("Inga uppdrag i den här vyn ännu.")
-                    .font(.caption).foregroundStyle(StudioTheme.muted)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(queueSearch.isEmpty && queueFilter == "Alla" && queueProjectFilter == "Alla projekt"
+                         ? "Inga uppdrag ännu. Skicka ett uppdrag till Byte så visas det här."
+                         : "Inga uppdrag matchar dina filter.")
+                        .font(.caption).foregroundStyle(StudioTheme.muted)
+                    if !queueSearch.isEmpty || queueFilter != "Alla" || queueProjectFilter != "Alla projekt" {
+                        Button {
+                            queueSearch = ""
+                            queueFilter = "Alla"
+                            queueProjectFilter = "Alla projekt"
+                            showsAllQueueItems = false
+                        } label: {
+                            Label("Rensa alla filter", systemImage: "line.3.horizontal.decrease.circle")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .tint(StudioTheme.accentCyan)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(11)
+                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
             } else {
                 ForEach(showsAllQueueItems ? filteredQueueItems : Array(filteredQueueItems.prefix(12))) { item in
                     HStack(alignment: .top, spacing: 10) {
