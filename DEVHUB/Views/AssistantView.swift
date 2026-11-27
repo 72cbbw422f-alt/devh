@@ -731,7 +731,7 @@ struct AssistantView: View {
                                         .foregroundStyle(StudioTheme.muted)
                                 }
                             }
-                            if let analysis = item.analysisText, !analysis.isEmpty {
+                            if queueHasAnalysis(item), let analysis = item.analysisText {
                                 Group {
                                     if let formatted = try? AttributedString(markdown: analysis) {
                                         Text(formatted)
@@ -880,14 +880,17 @@ struct AssistantView: View {
                                 item.statusRawValue = "completed"
                                 shouldFetchAnalysis = !queueHasAnalysis(item)
                             } else {
-                                if item.statusRawValue != "failed" { failedCount += 1 }
+                                let newlyFailed = item.statusRawValue != "failed"
+                                if newlyFailed { failedCount += 1 }
                                 item.statusRawValue = "failed"
-                                modelContext.insert(DEVHUBNotification(
-                                    title: "Byte-körningen misslyckades",
-                                    message: "GitHub avslutade uppdraget med status: \(status.conclusion ?? "okänt fel").",
-                                    category: "issue",
-                                    destinationURL: status.url?.absoluteString
-                                ))
+                                if newlyFailed {
+                                    modelContext.insert(DEVHUBNotification(
+                                        title: "Byte-körningen misslyckades",
+                                        message: "GitHub avslutade uppdraget med status: \(status.conclusion ?? "okänt fel").",
+                                        category: "issue",
+                                        destinationURL: status.url?.absoluteString
+                                    ))
+                                }
                             }
                         }
                     }
