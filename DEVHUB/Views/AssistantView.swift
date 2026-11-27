@@ -1155,8 +1155,11 @@ struct AssistantView: View {
         guard !prompt.isEmpty else { return }
         focusedField = nil
         analysisRepository = selectedRepository
-        let previousResponseID = workMode == "collaborate" ? continuingFromResponseID : nil
-        let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt, workMode: workMode)
+        // A selected conversation must never silently become a fresh task because
+        // the user changed the global work-mode setting in the meantime.
+        let previousResponseID = continuingFromResponseID
+        let submissionMode = previousResponseID == nil ? workMode : "collaborate"
+        let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt, workMode: submissionMode)
         queueItem.conversationResponseID = previousResponseID
         modelContext.insert(queueItem)
         let queueItemID = queueItem.id
@@ -1169,7 +1172,7 @@ struct AssistantView: View {
         let startedAt = Date()
         Task {
             do {
-                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: workMode, previousResponseID: previousResponseID, token: token)
+                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: submissionMode, previousResponseID: previousResponseID, token: token)
                 await MainActor.run {
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                         item.statusRawValue = "running"
