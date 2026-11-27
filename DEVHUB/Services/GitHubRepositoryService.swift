@@ -90,6 +90,12 @@ private struct GitHubPullRequestSnapshot: Decodable {
     }
 }
 
+private struct GitHubCombinedStatus: Decodable {
+    let state: String
+    let totalCount: Int
+    enum CodingKeys: String, CodingKey { case state; case totalCount = "total_count" }
+}
+
 private struct GitHubCheckRunsResponse: Decodable {
     struct CheckRun: Decodable {
         let status: String
@@ -101,7 +107,11 @@ private struct GitHubCheckRunsResponse: Decodable {
         }
     }
     let checkRuns: [CheckRun]
-    enum CodingKeys: String, CodingKey { case checkRuns = "check_runs" }
+    let totalCount: Int
+    enum CodingKeys: String, CodingKey {
+        case checkRuns = "check_runs"
+        case totalCount = "total_count"
+    }
 }
 
 enum GitHubRepositoryError: LocalizedError {
@@ -216,7 +226,13 @@ struct GitHubRepositoryService {
         let checksURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/check-runs?per_page=100")!
         let checks: GitHubCheckRunsResponse = try await request(checksURL)
         guard !checks.checkRuns.isEmpty,
+              checks.totalCount == checks.checkRuns.count,
               checks.checkRuns.allSatisfy({ $0.status == "completed" && $0.conclusion == "success" }) else {
+            throw GitHubRepositoryError.checksNotSuccessful
+        }
+        let statusURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/status")!
+        let combinedStatus: GitHubCombinedStatus = try await request(statusURL)
+        guard combinedStatus.state == "success" else {
             throw GitHubRepositoryError.checksNotSuccessful
         }
         let workflowURL = checks.checkRuns.compactMap { $0.htmlURL }.first ?? pullRequest.htmlURL
