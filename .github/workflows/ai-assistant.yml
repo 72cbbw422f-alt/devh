@@ -23,6 +23,7 @@ on:
         required: true
         type: choice
         options:
+          - quick
           - collaborate
           - approval
           - autopilot
@@ -50,6 +51,7 @@ jobs:
           fi
 
       - name: Check out selected project
+        if: inputs.work_mode != 'quick'
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.project_repository }}
@@ -57,11 +59,13 @@ jobs:
           path: project
 
       - name: Capture project base commit
+        if: inputs.work_mode != 'quick'
         id: base
         working-directory: project
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Build project context
+        if: inputs.work_mode != 'quick'
         id: context
         working-directory: project
         run: |
@@ -122,6 +126,7 @@ jobs:
           import json, os, urllib.request, urllib.error
           mode = os.environ["WORK_MODE"]
           mode_guidance = {
+              "quick": "Answer the user's simple question directly in Swedish. Do not perform a repository audit or propose code changes. Keep the answer concise, normally 2-6 sentences. If source inspection is required, ask the user to switch to a project analysis mode.",
               "collaborate": "Act as a collaborative engineering partner in an ongoing multi-turn conversation. Use prior response context when provided, answer the latest follow-up directly, preserve decisions already made, and ask a focused clarification only when required. Suggest one concrete next step.",
               "approval": "Prepare a thorough review and an ordered implementation plan. Identify risks and exact files to change. When code changes are appropriate, include a clearly labeled PATCH PREVIEW section with one unified diff code block per file, using standard --- a/path and +++ b/path headers and complete applicable hunks. Diffs are proposals only: never claim they were applied. Explain assumptions and validation steps, flag any deletion or overwrite, and finish by explicitly waiting for the user's approval before implementation.",
               "autopilot": "Analyze the task as an autonomous assignment and provide a prioritized execution plan, validation steps, and risks. This workflow is read-only: do not claim to have edited code, opened pull requests, or completed implementation."
@@ -140,16 +145,20 @@ jobs:
           Return valid JSON only between the markers. Suggest 1-8 concrete, verifiable next actions relevant to the selected repository. Use only milestone titles supported by the repository context; if no milestone is clearly supported, use an empty string. Weight must be an integer from 1 to 5. These are proposals only: never claim they are completed, and do not include already completed work.
 
           Working mode: """ + mode + "\n" + mode_guidance
+          quick_mode = mode == "quick"
+          user_content = "Question: " + os.environ["TASK"]
+          if not quick_mode:
+              user_content = ("Repository: " + os.environ["PROJECT_REPOSITORY"] +
+                   "\nTask: " + os.environ["TASK"] +
+                   "\nWorking mode: " + mode +
+                   "\n\nSource context:\n" + os.environ["PROJECT_CONTEXT"])
           payload = {
               "model": "gpt-6.2-sol",
               "input": [
                   {"role": "system", "content": system},
-                  {"role": "user", "content": "Repository: " + os.environ["PROJECT_REPOSITORY"] +
-                   "\nTask: " + os.environ["TASK"] +
-                   "\nWorking mode: " + mode +
-                   "\n\nSource context:\n" + os.environ["PROJECT_CONTEXT"]}
+                  {"role": "user", "content": user_content}
               ],
-              "max_output_tokens": 1800
+              "max_output_tokens": 700 if quick_mode else 1800
           }
           previous_response_id = os.environ.get("PREVIOUS_RESPONSE_ID", "").strip()
           if previous_response_id:
