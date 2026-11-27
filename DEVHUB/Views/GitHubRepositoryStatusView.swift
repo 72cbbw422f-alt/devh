@@ -53,6 +53,11 @@ struct GitHubRepositoryStatusView: View {
                         Text("SENASTE COMMIT").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(StudioTheme.muted)
                         Text(latestCommit.commit.message.components(separatedBy: .newlines).first ?? latestCommit.commit.message)
                             .font(.caption.weight(.medium)).foregroundStyle(StudioTheme.text).lineLimit(2)
+                        if let author = latestCommit.commit.author?.name, !author.isEmpty {
+                            Label(author, systemImage: "person")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(StudioTheme.muted)
+                        }
                         Link("Visa commit", destination: latestCommit.htmlURL)
                             .font(.caption.weight(.semibold)).tint(StudioTheme.accent)
                     }
