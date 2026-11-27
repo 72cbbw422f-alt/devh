@@ -32,6 +32,7 @@ struct AssistantView: View {
     @State private var analysisText: String?
     @State private var analysisTaskProposalJSON: String?
     @State private var continuingFromResponseID: String?
+    @State private var continuingFromTitle: String?
     @AppStorage("byte.workMode") private var workMode = "approval"
     @AppStorage("byte.allowAutomaticBuilds") private var allowAutomaticBuilds = true
     @AppStorage("byte.allowAutomaticPullRequests") private var allowAutomaticPullRequests = false
@@ -271,11 +272,22 @@ struct AssistantView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.turn.down.right")
                         .foregroundStyle(StudioTheme.accentCyan)
-                    Text(workMode == "collaborate" ? "Fortsätter ett befintligt Byte-samtal" : "Välj Samarbeta för att behålla samtalets sammanhang")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(StudioTheme.accentCyan)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Fortsätter ett befintligt Byte-samtal")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(StudioTheme.accentCyan)
+                        if let continuingFromTitle {
+                            Text(continuingFromTitle)
+                                .font(.caption2)
+                                .foregroundStyle(StudioTheme.secondaryText)
+                                .lineLimit(1)
+                        }
+                    }
                     Spacer()
-                    Button("Avsluta") { self.continuingFromResponseID = nil }
+                    Button("Avsluta") {
+                        self.continuingFromResponseID = nil
+                        self.continuingFromTitle = nil
+                    }
                         .font(.caption)
                 }
                 .padding(10)
@@ -583,6 +595,7 @@ struct AssistantView: View {
                                         analysisRepository = item.projectRepository
                                         workMode = "collaborate"
                                         continuingFromResponseID = responseID
+                                        continuingFromTitle = item.title
                                         task = ""
                                         focusedField = .task
                                         statusMessage = "Du fortsätter nu samtalet med Byte från det här uppdraget."
@@ -1182,6 +1195,7 @@ struct AssistantView: View {
                     statusMessage = "Uppdraget är mottaget. Väntar på AI-analysen…"
                     task = ""
                     continuingFromResponseID = nil
+                    continuingFromTitle = nil
                 }
                 let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, expectedTask: prompt, token: token) { runID, runURL in
                     await MainActor.run {
