@@ -41,6 +41,11 @@ struct RoadmapView: View {
         return Double(projectTasks.filter(\.isCompleted).count) / Double(projectTasks.count)
     }
 
+    private func verifiedTaskProgress(for project: StudioProject) -> Double {
+        let projectTasks = tasks(for: project)
+        guard !projectTasks.isEmpty else { return 0 }
+        return Double(projectTasks.filter { $0.statusRawValue == "verified" }.count) / Double(projectTasks.count)
+    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
@@ -173,21 +178,37 @@ struct RoadmapView: View {
                     progressBar(project.progress, color: Color(hex: project.accent))
                 }
 
-                VStack(alignment: .leading, spacing: 5) {
+                let projectTasks = tasks(for: project)
+                let verifiedCount = projectTasks.filter { $0.statusRawValue == "verified" }.count
+                let manualCount = projectTasks.filter { $0.isCompleted && $0.statusRawValue != "verified" }.count
+                VStack(alignment: .leading, spacing: 7) {
                     HStack {
-                        Text("CHECKLISTOR")
+                        Text("KLARMARKERADE UPPGIFTER")
                             .font(.system(size: 8, weight: .bold))
                             .tracking(1)
                             .foregroundStyle(StudioTheme.muted)
                         Spacer()
-                        let projectTasks = tasks(for: project)
-                        let verifiedCount = projectTasks.filter { $0.statusRawValue == "verified" }.count
-                        let manualCount = projectTasks.filter { $0.isCompleted && $0.statusRawValue != "verified" }.count
-                        Text(projectTasks.isEmpty ? "Inga uppgifter" : "\(verifiedCount) verifierade · \(manualCount) manuellt klara")
+                        Text(projectTasks.isEmpty ? "Inga uppgifter" : "\(verifiedCount + manualCount)/\(projectTasks.count)")
                             .font(.caption2.monospacedDigit().weight(.medium))
                             .foregroundStyle(StudioTheme.secondaryText)
                     }
                     progressBar(taskProgress(for: project), color: StudioTheme.accentCyan)
+                    HStack {
+                        Text("GITHUB-VERIFIERADE")
+                            .font(.system(size: 8, weight: .bold))
+                            .tracking(0.8)
+                            .foregroundStyle(StudioTheme.muted)
+                        Spacer()
+                        Text(projectTasks.isEmpty ? "—" : "\(verifiedCount)/\(projectTasks.count)")
+                            .font(.caption2.monospacedDigit().weight(.medium))
+                            .foregroundStyle(StudioTheme.secondaryText)
+                    }
+                    progressBar(verifiedTaskProgress(for: project), color: StudioTheme.accent)
+                    if !projectTasks.isEmpty {
+                        Text("\(manualCount) manuellt klara · kräver ingen GitHub-verifiering")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(StudioTheme.muted)
+                    }
                 }
             }
 
