@@ -40,7 +40,7 @@ Spara aldrig token i ett vanligt meddelande, en skärmbild eller i ett projektup
 - **Klara:** analysen eller kodförslagsflödet är färdigt.
 - **Fel / Misslyckade:** ett arbetsflöde har rapporterat ett fel.
 
-Du kan söka i uppdrag, filtrera på projekt och status samt uppdatera status manuellt. Appen kontrollerar väntande GitHub-flöden automatiskt ungefär var 60:e sekund när vyn är aktiv. I appen finns också en utfällbar förklaring under **Vad betyder statusarna?**.
+Du kan söka i uppdrag, filtrera på projekt och status samt uppdatera status manuellt. Sökningen omfattar uppdragstitel, projektrepo, analysresultat, GitHub-fel, fel vid PR-skapande och kodförslagets diff. Använd rensa-symbolen i sökfältet för att tömma sökningen; om kombinationen av sökning och filter inte ger träffar kan du välja **Rensa alla filter**. Appen kontrollerar väntande GitHub-flöden automatiskt ungefär var 60:e sekund när vyn är aktiv. I appen finns också en utfällbar förklaring under **Vad betyder statusarna?**.
 
 Om appen visar timeout kan GitHub fortfarande arbeta. Kontrollera den befintliga GitHub-körningen innan du skickar samma uppdrag igen.
 
