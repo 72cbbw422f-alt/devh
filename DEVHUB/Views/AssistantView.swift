@@ -960,7 +960,7 @@ struct AssistantView: View {
                     task = ""
                     continuingFromResponseID = nil
                 }
-                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, expectedTask: prompt, token: token) { runID, runURL in
                     await MainActor.run {
                         if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                             item.workflowRunID = runID
@@ -1105,6 +1105,7 @@ private enum GitHubWorkflowClient {
         let html_url: String
         let created_at: String
         let event: String
+        let display_title: String?
     }
 
     struct RunStatus { let status: String; let conclusion: String?; let url: URL? }
@@ -1125,6 +1126,7 @@ private enum GitHubWorkflowClient {
 
     static func waitForRun(
         startedAt: Date,
+        expectedTask: String,
         token: String,
         onRunFound: @escaping (Int, URL?) async -> Void
     ) async throws -> RunResult {
@@ -1142,6 +1144,7 @@ private enum GitHubWorkflowClient {
             if matchedRun == nil {
                 matchedRun = runs.first(where: {
                     $0.event == "workflow_dispatch" &&
+                    $0.display_title == expectedTask &&
                     (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
                 })
                 if let run = matchedRun {
