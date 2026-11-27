@@ -883,7 +883,7 @@ struct AssistantView: View {
         statusMessage = "Kontrollerar GitHub-status…"
         Task {
             do {
-                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), token: token) { runID, runURL in
                     await MainActor.run {
                         item.patchWorkflowRunID = runID
                         item.patchWorkflowURL = runURL?.absoluteString
