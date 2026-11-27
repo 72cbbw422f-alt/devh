@@ -536,13 +536,32 @@ struct AssistantView: View {
                                 .lineLimit(3)
                             Text(item.projectRepository.replacingOccurrences(of: "72cbbw422f-alt/", with: "") + " · " + item.workModeLabel + " · " + item.statusLabel)
                                 .font(.caption).foregroundStyle(StudioTheme.muted)
+                            HStack(spacing: 6) {
+                                if item.analysisText != nil && item.patchPreview != nil {
+                                    Label("Analys + kodförslag", systemImage: "doc.text.magnifyingglass")
+                                } else if item.patchPreview != nil {
+                                    Label("Kodförslag", systemImage: "chevron.left.forwardslash.chevron.right")
+                                } else if item.analysisText != nil {
+                                    Label("Analysresultat", systemImage: "text.alignleft")
+                                } else {
+                                    Label("Uppdrag", systemImage: "tray")
+                                }
+                            }
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(StudioTheme.accentCyan)
                             if item.patchStatusRawValue != "pending" {
                                 Label(patchQueueStatusLabel(item.patchStatusRawValue), systemImage: patchQueueStatusSymbol(item.patchStatusRawValue))
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(patchQueueStatusColor(item.patchStatusRawValue))
                             }
-                            Text("Senast ändrad ") + Text(item.updatedAt, style: .relative)
-                                .font(.caption2).foregroundStyle(StudioTheme.muted)
+                            HStack(spacing: 5) {
+                                Image(systemName: "calendar")
+                                Text("Skapad " + item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                Text("·")
+                                Text("Uppdaterad ") + Text(item.updatedAt, style: .relative)
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(StudioTheme.muted)
                             if item.inputTokens > 0 || item.outputTokens > 0 {
                                 Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
                                     .font(.caption2.monospacedDigit())
