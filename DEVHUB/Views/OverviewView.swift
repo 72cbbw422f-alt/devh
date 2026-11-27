@@ -23,7 +23,7 @@ struct OverviewView: View {
                 studioHero
                 LazyVGrid(columns: columns, spacing: 12) {
                     MetricCard(title: "AKTIVA PROJEKT", value: "\(activeCount)", note: "Pågående utveckling", symbol: "square.stack.3d.up")
-                    MetricCard(title: "GENOMSNITTLIGT FRAMSTEG", value: "\(Int(averageProgress * 100))%", note: "Baserat på projektens planerade framsteg", symbol: "chart.donut")
+                    MetricCard(title: "PLANERAT SNITTFRAMSTEG", value: "\(Int(averageProgress * 100))%", note: "Manuellt planeringsvärde för alla projekt", symbol: "chart.donut")
                     MetricCard(title: "INTÄKTER / MÅNAD", value: "Ej anslutet", note: "Ingen betalningskälla ansluten", symbol: "arrow.up.right")
                     MetricCard(title: "SENASTE RELEASE", value: "Ej ansluten", note: "Releaseinformation hämtas från GitHub i ett senare steg", symbol: "shippingbox")
                 }
@@ -82,7 +82,7 @@ struct OverviewView: View {
                     .font(.title2.weight(.medium))
                     .foregroundStyle(.white.opacity(0.85))
             }
-            Text("Dina idéer.\\nI rörelse.")
+            Text("Dina idéer.\nI rörelse.")
                 .font(.system(size: 27, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             HStack(alignment: .center, spacing: 12) {
@@ -90,7 +90,7 @@ struct OverviewView: View {
                     Text("\(activeCount) aktiva projekt")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
-                    Text("Samlad projektstatus")
+                    Text("Genomsnittligt planerat framsteg")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.7))
                 }
