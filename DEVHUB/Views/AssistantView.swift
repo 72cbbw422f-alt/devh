@@ -580,7 +580,7 @@ struct AssistantView: View {
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(StudioTheme.accentCyan)
                             }
-                            if let savedAnalysis = item.analysisText, !savedAnalysis.isEmpty {
+                            if queueHasAnalysis(item), let savedAnalysis = item.analysisText {
                                 Button {
                                     analysisText = savedAnalysis
                                     analysisTaskProposalJSON = item.taskProposalJSON
@@ -593,7 +593,7 @@ struct AssistantView: View {
                                 }
                                 .tint(StudioTheme.accentCyan)
                             }
-                            if let patchPreview = item.patchPreview, !patchPreview.isEmpty {
+                            if queueHasPatch(item), let patchPreview = item.patchPreview {
                                 DisclosureGroup {
                                     ScrollView(.horizontal) {
                                         Text(patchPreview)
@@ -796,7 +796,7 @@ struct AssistantView: View {
                                     Link("Öppna körning", destination: url)
                                         .font(.caption.weight(.semibold)).tint(StudioTheme.accentCyan)
                                 }
-                                if let analysis = item.analysisText, !analysis.isEmpty {
+                                if queueHasAnalysis(item), let analysis = item.analysisText {
                                     ShareLink(item: analysis) {
                                         Label("Dela analys", systemImage: "square.and.arrow.up")
                                             .font(.caption.weight(.semibold))
