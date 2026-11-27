@@ -22,11 +22,9 @@ Spara aldrig token i ett vanligt meddelande, en skärmbild eller i ett projektup
 - **Godkänn först:** Byte analyserar projektet och kan visa konkreta kodförslag som diff. Förslagen är förhandsvisningar; inget skickas för ändring förrän du uttryckligen godkänner.
 - **Autopilot:** Byte analyserar uppdraget självständigt och föreslår nästa steg. Automatisk kodskrivning och PR-skapande är ännu inte aktiverat i detta läge.
 
-Övriga reglage:
-- **Starta byggningar automatiskt:** inställning för byggflödet.
-- **Tillåt automatiska pull requests:** inställning för PR-flödet.
-- **Kräv alltid godkännande för radering och överskrivning:** säkerhetsinställning.
-- **Månadsbudget för AI:** lokal budgetinställning. Kontrollera alltid faktisk användning och kostnad i den tjänst som utför AI-arbetet; anta inte att fältet i appen ensamt stoppar kostnader.
+Övriga inställningar:
+- Automatiska byggningar och automatiska pull requests är ännu inte aktiverade i appen. Kodförslag kräver fortsatt uttryckligt godkännande.
+- **Månatligt AI-budgetmål:** ett lokalt planeringsvärde i kronor. Det är inte en automatisk kostnadsspärr och stoppar inte AI-anrop. Kontrollera faktisk användning och kostnad i den tjänst som utför AI-arbetet.
 
 ## 4. Skicka ett uppdrag
 
