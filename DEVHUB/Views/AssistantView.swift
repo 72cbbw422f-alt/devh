@@ -22,6 +22,7 @@ struct AssistantView: View {
     @State private var queueProjectFilter = "Alla projekt"
     @State private var showsAllQueueItems = false
     @State private var isRefreshingQueue = false
+    @State private var refreshingPatchItemIDs: Set<String> = []
     @State private var githubToken = ""
     @State private var hasSavedToken = false
     @State private var isSending = false
@@ -155,6 +156,7 @@ struct AssistantView: View {
                 githubToken = token
                 hasSavedToken = true
                 refreshQueueStatuses()
+                refreshPendingApprovedPatchStatuses()
             }
         }
         .task {
@@ -162,6 +164,7 @@ struct AssistantView: View {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
                 guard !Task.isCancelled else { break }
                 refreshQueueStatuses()
+                refreshPendingApprovedPatchStatuses()
             }
         }
     }
@@ -899,14 +902,26 @@ struct AssistantView: View {
             }
         }
     }
+    private func refreshPendingApprovedPatchStatuses() {
+        for item in byteWorkItems where item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" {
+            refreshApprovedPatchStatus(for: item)
+        }
+    }
+
     private func refreshApprovedPatchStatus(for item: ByteWorkItem) {
         guard item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" else { return }
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
             return
         }
+        guard refreshingPatchItemIDs.insert(item.id).inserted else { return }
         statusMessage = "Kontrollerar GitHub-status…"
         Task {
+            defer {
+                Task { @MainActor in
+                    refreshingPatchItemIDs.remove(item.id)
+                }
+            }
             do {
                 // Once GitHub has supplied a run ID, poll that exact run. Do not
                 // rediscover it by title/date: that can miss older or delayed runs.
