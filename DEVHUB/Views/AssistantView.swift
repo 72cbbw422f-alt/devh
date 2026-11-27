@@ -1129,6 +1129,7 @@ private enum GitHubWorkflowClient {
         onRunFound: @escaping (Int, URL?) async -> Void
     ) async throws -> RunResult {
         let formatter = ISO8601DateFormatter()
+        var matchedRun: WorkflowRun?
         for _ in 0..<40 {
             try await Task.sleep(nanoseconds: 3_000_000_000)
             var request = URLRequest(url: URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/runs?per_page=10")!)
@@ -1138,12 +1139,22 @@ private enum GitHubWorkflowClient {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.statusCheck }
             let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
-            guard let run = runs.first(where: { $0.event == "workflow_dispatch" && (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10) }) else { continue }
-            let runURL = URL(string: run.html_url)
-            await onRunFound(run.id, runURL)
-            if run.status == "completed" {
-                let message = run.conclusion == "success" ? "AI-analysen lyckades! Resultatet finns i GitHub-körningens Summary." : "AI-körningen avslutades med fel (\(run.conclusion ?? "okänt fel")). Öppna körningen för detaljer."
-                return RunResult(id: run.id, message: message, url: URL(string: run.html_url))
+            if matchedRun == nil {
+                matchedRun = runs.first(where: {
+                    $0.event == "workflow_dispatch" &&
+                    (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
+                })
+                if let run = matchedRun {
+                    await onRunFound(run.id, URL(string: run.html_url))
+                }
+            }
+            guard let run = matchedRun else { continue }
+            let status = try await fetchRunStatus(runID: run.id, token: token)
+            if status.status == "completed" {
+                let message = status.conclusion == "success"
+                    ? "AI-analysen lyckades! Resultatet finns i GitHub-körningens Summary."
+                    : "AI-körningen avslutades med fel (\(status.conclusion ?? "okänt fel")). Öppna körningen för detaljer."
+                return RunResult(id: run.id, message: message, url: status.url ?? URL(string: run.html_url))
             }
         }
         throw WorkflowError.timeout
