@@ -4,7 +4,7 @@
 
 ## 1. Vad DEVHUB gör
 
-DEVHUB är en iOS-app där du kan skicka utvecklingsuppdrag till Byte, följa arbetet och granska kodförslag. Appen använder GitHub Actions för att köra arbetet. Dina uppdrag och deras status sparas lokalt i appens SwiftData-databas.
+DEVHUB är en iOS-app där du kan skicka utvecklingsuppdrag till Byte, följa arbetet och granska kodförslag. Appen använder GitHub Actions för att köra arbetet. Dina uppdrag och deras status sparas lokalt i appens SwiftData-databas. Under fliken **Utveckling** visas GitHub-aktivitet för anslutna projekt: senaste commit, senaste Actions-körning samt öppna issues och pull requests. Du kan öppna respektive post direkt i GitHub och uppdatera flödet manuellt. Om en del av GitHub-informationen inte kan hämtas visas en varning för berört projekt.
 
 ## 2. Innan du börjar
 
