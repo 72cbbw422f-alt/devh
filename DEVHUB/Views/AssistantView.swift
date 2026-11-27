@@ -357,7 +357,7 @@ struct AssistantView: View {
                     !byteWorkItems.contains(where: {
                         guard let runID = $0.workflowRunID else { return false }
                         return $0.statusRawValue == "running" ||
-                            ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
+                            ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
                             ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
                     }) &&
                     !byteWorkItems.contains(where: { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" })
@@ -873,7 +873,7 @@ struct AssistantView: View {
                             if status.conclusion == "success" {
                                 if item.statusRawValue != "completed" { completedCount += 1 }
                                 item.statusRawValue = "completed"
-                                shouldFetchAnalysis = item.analysisText == nil
+                                shouldFetchAnalysis = !queueHasAnalysis(item)
                             } else {
                                 if item.statusRawValue != "failed" { failedCount += 1 }
                                 item.statusRawValue = "failed"
