@@ -506,6 +506,19 @@ struct AssistantView: View {
                                 Text("Förhandsvisning – ingen kod har ändrats eller godkänts för incheckning.")
                                     .font(.caption2)
                                     .foregroundStyle(StudioTheme.muted)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Label("Godkännande skapar en separat pull request. Den slås inte ihop automatiskt.", systemImage: "shield.lefthalf.filled")
+                                        .font(.caption2.weight(.medium))
+                                        .foregroundStyle(StudioTheme.accentCyan)
+                                    if let baseSHA = item.baseCommitSHA {
+                                        Text("Granskad grundversion: \(String(baseSHA.prefix(10)))")
+                                            .font(.caption2.monospaced())
+                                            .foregroundStyle(StudioTheme.muted)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(9)
+                                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
                                 if let patchPreview = item.patchPreview, !patchPreview.isEmpty {
                                     HStack(spacing: 12) {
                                         switch item.patchStatusRawValue {
