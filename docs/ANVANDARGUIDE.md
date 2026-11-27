@@ -81,3 +81,8 @@ Den slutliga genomgången ska kompletteras med skärmbilder och exakta steg för
 ### Om projektets kod har ändrats efter granskningen
 
 När du godkänner ett kodförslag kontrollerar GitHub att projektets `main`-branch fortfarande motsvarar den grundversion som visas i DEVHUB. Om någon har hunnit ändra projektet sedan analysen gjordes stoppas förslaget av säkerhetsskäl. Skicka då inte samma diff igen. Kör en ny analys med Byte så att förslaget byggs mot den senaste koden och granska den nya diffen innan du godkänner.
+
+
+### AI-användning i arbetskön
+
+Arbetskön visar en summering av den användningsdata som sparats för uppdragen: registrerade in- och utgående token samt beräknad kostnad i USD. Summan omfattar bara uppdrag där användningsdata har hämtats och sparats i appen. Den är en uppskattning, inte en faktura, och ersätter inte kontroll av faktisk förbrukning hos AI-leverantören. Budgetmålet i inställningarna är fortfarande endast ett lokalt planeringsvärde.
