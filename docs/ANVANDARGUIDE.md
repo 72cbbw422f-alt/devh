@@ -76,3 +76,8 @@ Ett meddelande om timeout betyder inte automatiskt att GitHub-arbetet misslyckad
 ## 9. Vad som återstår i guiden
 
 Den slutliga genomgången ska kompletteras med skärmbilder och exakta steg för varje skärm när funktionerna och gränssnittet är färdigtestade. Guiden ska också skilja tydligt mellan funktioner som är klara, funktioner som är under utveckling och sådant användaren själv behöver göra.
+
+
+### Om projektets kod har ändrats efter granskningen
+
+När du godkänner ett kodförslag kontrollerar GitHub att projektets `main`-branch fortfarande motsvarar den grundversion som visas i DEVHUB. Om någon har hunnit ändra projektet sedan analysen gjordes stoppas förslaget av säkerhetsskäl. Skicka då inte samma diff igen. Kör en ny analys med Byte så att förslaget byggs mot den senaste koden och granska den nya diffen innan du godkänner.
