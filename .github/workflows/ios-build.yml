@@ -15,6 +15,13 @@ on:
       - 'project.yml'
       - '.github/workflows/ios-build.yml'
       - '.github/workflows/ai-assistant.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'DEVHUB/**'
+      - 'project.yml'
+      - '.github/workflows/ios-build.yml'
+      - '.github/workflows/ai-assistant.yml'
 permissions:
   contents: read
 jobs:
