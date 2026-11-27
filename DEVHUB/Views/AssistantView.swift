@@ -22,7 +22,6 @@ struct AssistantView: View {
     @State private var queueProjectFilter = "Alla projekt"
     @State private var showsAllQueueItems = false
     @State private var isRefreshingQueue = false
-    @State private var queueFailureDetails: [Int: String] = [:]
     @State private var githubToken = ""
     @State private var hasSavedToken = false
     @State private var isSending = false
@@ -336,7 +335,7 @@ struct AssistantView: View {
                     guard let runID = $0.workflowRunID else { return false }
                     return $0.statusRawValue == "running" ||
                         ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
-                        ($0.statusRawValue == "failed" && queueFailureDetails[runID] == nil)
+                        ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
                 }))
                 .accessibilityLabel("Uppdatera arbetskön")
             }
@@ -475,7 +474,7 @@ struct AssistantView: View {
                                 }
                             }
                             if item.statusRawValue == "failed", let runID = item.workflowRunID {
-                                if let details = queueFailureDetails[runID] {
+                                if let details = item.workflowFailureDetails {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Label("Felorsak", systemImage: "exclamationmark.triangle.fill")
                                             .font(.caption.weight(.semibold))
@@ -616,7 +615,7 @@ struct AssistantView: View {
             guard let runID = $0.workflowRunID else { return false }
             return $0.statusRawValue == "running" ||
                 ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
-                ($0.statusRawValue == "failed" && queueFailureDetails[runID] == nil)
+                ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
         }
         guard !pendingItems.isEmpty else { return }
         isRefreshingQueue = true
@@ -652,7 +651,7 @@ struct AssistantView: View {
                     }
                     if status.status == "completed", status.conclusion != "success" {
                         let details = try await GitHubWorkflowClient.fetchFailureSummary(runID: runID, token: token)
-                        await MainActor.run { queueFailureDetails[runID] = details }
+                        await MainActor.run { item.workflowFailureDetails = details }
                     }
                     if shouldFetchAnalysis {
                         let analysis = try await GitHubWorkflowClient.fetchAnalysis(runID: runID, token: token)
