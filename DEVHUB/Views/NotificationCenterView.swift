@@ -35,6 +35,14 @@ struct NotificationCenterView: View {
                     .frame(maxWidth: .infinity).padding(.vertical, 44)
                     .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 16))
                 } else {
+                    HStack(spacing: 8) {
+                        Label("\(notifications.count) totalt", systemImage: "bell")
+                        Text("·")
+                        Label("\(unreadCount) olästa", systemImage: "circle.fill")
+                    }
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(StudioTheme.muted)
+
                     ForEach(notifications) { item in
                         notificationRow(item)
                     }
@@ -53,22 +61,45 @@ struct NotificationCenterView: View {
                 .foregroundStyle(StudioTheme.accent)
                 .frame(width: 36, height: 36)
                 .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title).font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
-                Text(item.message).font(.caption).foregroundStyle(StudioTheme.secondaryText)
-                Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption2).foregroundStyle(StudioTheme.muted)
-            }
-            Spacer()
-            if !item.isRead {
-                Circle().fill(StudioTheme.accent).frame(width: 7, height: 7)
-            }
-            if item.destinationURL != nil {
-                Image(systemName: "arrow.up.right").font(.caption2).foregroundStyle(StudioTheme.muted)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(StudioTheme.text)
+                    Spacer(minLength: 4)
+                    if !item.isRead {
+                        Text("NY")
+                            .font(.system(size: 8, weight: .bold))
+                            .tracking(0.5)
+                            .foregroundStyle(StudioTheme.accent)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(StudioTheme.accent.opacity(0.13), in: Capsule())
+                    }
+                }
+                Text(item.message)
+                    .font(.caption)
+                    .foregroundStyle(StudioTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    if item.destinationURL != nil {
+                        Text("·")
+                        Label("Öppna", systemImage: "arrow.up.right")
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(StudioTheme.muted)
             }
         }
         .padding(13)
         .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 13))
+        .overlay(alignment: .leading) {
+            if !item.isRead {
+                Capsule().fill(StudioTheme.accent).frame(width: 3).padding(.vertical, 10)
+            }
+        }
+        .overlay(RoundedRectangle(cornerRadius: 13).stroke(StudioTheme.border, lineWidth: 1))
         .contentShape(Rectangle())
 
         if let rawURL = item.destinationURL, let url = URL(string: rawURL) {
