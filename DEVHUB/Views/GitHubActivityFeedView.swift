@@ -20,6 +20,7 @@ private struct GitHubActivityItem: Identifiable {
 struct GitHubActivityFeedView: View {
     let projects: [StudioProject]
     @Environment(\.modelContext) private var modelContext
+    @Query private var existingNotifications: [DEVHUBNotification]
     @AppStorage("github.activity.seenKeys") private var seenKeysStorage = ""
     @AppStorage("github.activity.hasBaseline") private var hasActivityBaseline = false
     @State private var items: [GitHubActivityItem] = []
@@ -378,7 +379,7 @@ struct GitHubActivityFeedView: View {
                     let repository = parts.count > 1 ? String(parts[1]) : "GitHub"
                     let conclusion = parts.count > 3 ? String(parts[3]) : "unknown"
                     let succeeded = conclusion == "success"
-                    modelContext.insert(DEVHUBNotification(
+                    insertNotificationIfNeeded(DEVHUBNotification(
                         title: succeeded ? "Ny byggning lyckades" : "En byggning behöver kontrolleras",
                         message: "\(repository): GitHub Actions avslutades med resultatet \(conclusion).",
                         category: succeeded ? "build" : "issue",
@@ -408,4 +409,13 @@ struct GitHubActivityFeedView: View {
             ($0.pushedAt ?? .distantPast) > ($1.pushedAt ?? .distantPast)
         }
     }
+    private func insertNotificationIfNeeded(_ notification: DEVHUBNotification) {
+        guard let sourceKey = notification.sourceKey else {
+            modelContext.insert(notification)
+            return
+        }
+        guard !existingNotifications.contains(where: { $0.sourceKey == sourceKey }) else { return }
+        modelContext.insert(notification)
+    }
+
 }
