@@ -27,14 +27,6 @@ struct RoadmapView: View {
         return Int(projects.reduce(0) { $0 + $1.progress } / Double(projects.count) * 100)
     }
 
-    private var completedTaskCount: Int {
-        allTasks.filter { $0.isCompleted }.count
-    }
-
-    private var totalTaskCount: Int {
-        allTasks.count
-    }
-
     private var verifiedTaskCount: Int {
         allTasks.filter { $0.statusRawValue == "verified" }.count
     }
