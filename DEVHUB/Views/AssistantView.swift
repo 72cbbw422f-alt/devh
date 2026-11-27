@@ -380,8 +380,8 @@ struct AssistantView: View {
                 VStack(alignment: .leading, spacing: 9) {
                     Label("Aktiva – Byte har fått uppdraget eller arbetar med det.", systemImage: "hourglass")
                     Label("PR väntar – ett godkänt kodförslag behandlas av GitHub.", systemImage: "arrow.triangle.pull")
-                    Label("Klara – analysen eller PR-arbetsflödet är färdigt.", systemImage: "checkmark.circle")
-                    Label("Misslyckade – öppna uppdraget och läs felinformationen innan du försöker igen.", systemImage: "exclamationmark.triangle")
+                    Label("Klara – analysen eller PR-arbetsflödet är färdigt, utan ett senare fel.", systemImage: "checkmark.circle")
+                    Label("Misslyckade – fel har företräde framför tidigare framgång. Öppna uppdraget och läs felinformationen innan du försöker igen.", systemImage: "exclamationmark.triangle")
                     Text("Status uppdateras automatiskt ungefär var 60:e sekund när vyn är aktiv. Du kan också trycka på uppdateringssymbolen. Om appen säger timeout kan GitHub fortfarande arbeta – skicka inte samma uppdrag igen innan du kontrollerat körningen.")
                         .font(.caption2)
                         .foregroundStyle(StudioTheme.muted)
@@ -436,10 +436,10 @@ struct AssistantView: View {
             .pickerStyle(.menu)
             .tint(StudioTheme.accentCyan)
             HStack(spacing: 8) {
-                queueMetric(title: "Aktiva", count: byteWorkItems.filter { $0.statusRawValue == "queued" || $0.statusRawValue == "running" }.count, color: StudioTheme.accent)
-                queueMetric(title: "PR väntar", count: byteWorkItems.filter { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count, color: .orange)
-                queueMetric(title: "Klara", count: byteWorkItems.filter { $0.statusRawValue == "completed" || $0.patchStatusRawValue == "completed" }.count, color: StudioTheme.accentCyan)
-                queueMetric(title: "Fel", count: byteWorkItems.filter { $0.statusRawValue == "failed" || $0.patchStatusRawValue == "failed" }.count, color: .red)
+                queueMetric(title: "Aktiva", count: byteWorkItems.filter { queueIsActive($0) }.count, color: StudioTheme.accent)
+                queueMetric(title: "PR väntar", count: byteWorkItems.filter { queueIsPatchPending($0) }.count, color: .orange)
+                queueMetric(title: "Klara", count: byteWorkItems.filter { queueIsCompleted($0) }.count, color: StudioTheme.accentCyan)
+                queueMetric(title: "Fel", count: byteWorkItems.filter { queueIsFailed($0) }.count, color: .red)
             }
             let recordedUsageItems = byteWorkItems.filter { $0.inputTokens > 0 || $0.outputTokens > 0 }
             let recordedCostUSD = recordedUsageItems.reduce(0.0) { $0 + $1.costUSD }
@@ -1032,13 +1032,10 @@ struct AssistantView: View {
         byteWorkItems.filter { item in
             let matchesStatus: Bool
             switch queueFilter {
-            case "Aktiva": matchesStatus = item.statusRawValue == "queued" || item.statusRawValue == "running"
-            case "PR väntar":
-                matchesStatus = item.patchStatusRawValue == "dispatching" || item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running"
-            case "Klara":
-                matchesStatus = item.statusRawValue == "completed" || item.patchStatusRawValue == "completed"
-            case "Misslyckade":
-                matchesStatus = item.statusRawValue == "failed" || item.patchStatusRawValue == "failed"
+            case "Aktiva": matchesStatus = queueIsActive(item)
+            case "PR väntar": matchesStatus = queueIsPatchPending(item)
+            case "Klara": matchesStatus = queueIsCompleted(item)
+            case "Misslyckade": matchesStatus = queueIsFailed(item)
             default: matchesStatus = true
             }
             let matchesProject = queueProjectFilter == "Alla projekt" || item.projectRepository == queueProjectFilter
@@ -1064,6 +1061,28 @@ struct AssistantView: View {
                 || searchableText.contains { $0.localizedCaseInsensitiveContains(query) }
             return matchesStatus && matchesProject && matchesContent && matchesSearch
         }
+    }
+
+    private func queueIsFailed(_ item: ByteWorkItem) -> Bool {
+        item.statusRawValue == "failed" || item.patchStatusRawValue == "failed"
+    }
+
+    private func queueIsPatchPending(_ item: ByteWorkItem) -> Bool {
+        !queueIsFailed(item) &&
+        (item.patchStatusRawValue == "dispatching" ||
+         item.patchStatusRawValue == "dispatched" ||
+         item.patchStatusRawValue == "running")
+    }
+
+    private func queueIsActive(_ item: ByteWorkItem) -> Bool {
+        !queueIsFailed(item) &&
+        !queueIsPatchPending(item) &&
+        (item.statusRawValue == "queued" || item.statusRawValue == "running")
+    }
+
+    private func queueIsCompleted(_ item: ByteWorkItem) -> Bool {
+        guard !queueIsFailed(item), !queueIsPatchPending(item) else { return false }
+        return item.patchStatusRawValue == "completed" || item.statusRawValue == "completed"
     }
 
     private func patchQueueStatusLabel(_ status: String) -> String {
