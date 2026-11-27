@@ -379,6 +379,7 @@ struct AssistantView: View {
             Picker("Visa", selection: $queueFilter) {
                 Text("Alla").tag("Alla")
                 Text("Aktiva").tag("Aktiva")
+                Text("PR väntar").tag("PR väntar")
                 Text("Klara").tag("Klara")
                 Text("Misslyckade").tag("Misslyckade")
             }
@@ -410,6 +411,17 @@ struct AssistantView: View {
                                 Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(StudioTheme.accentCyan)
+                            }                            if let savedAnalysis = item.analysisText, !savedAnalysis.isEmpty {
+                                Button {
+                                    analysisText = savedAnalysis
+                                    analysisTaskProposalJSON = item.taskProposalJSON
+                                    continuingFromResponseID = item.conversationResponseID
+                                    statusMessage = "Visar sparad analys: " + item.title
+                                } label: {
+                                    Label("Visa sparad analys", systemImage: "doc.text.magnifyingglass")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .tint(StudioTheme.accentCyan)
                             }
                             if let patchPreview = item.patchPreview, !patchPreview.isEmpty {
                                 DisclosureGroup {
@@ -622,6 +634,8 @@ struct AssistantView: View {
                     }
                 }
             }
+            Text("Välj PR väntar för att samla godkända förslag som fortfarande behandlas. Öppna en sparad analys direkt från historiken.")
+                .font(.caption2).foregroundStyle(StudioTheme.muted)
             Text("Kön är lokal på den här enheten och synkroniseras ännu inte mellan användare eller appar.")
                 .font(.caption2).foregroundStyle(StudioTheme.muted)
         }
@@ -821,8 +835,12 @@ struct AssistantView: View {
             let matchesStatus: Bool
             switch queueFilter {
             case "Aktiva": matchesStatus = item.statusRawValue == "queued" || item.statusRawValue == "running"
-            case "Klara": matchesStatus = item.statusRawValue == "completed"
-            case "Misslyckade": matchesStatus = item.statusRawValue == "failed"
+            case "PR väntar":
+                matchesStatus = item.patchStatusRawValue == "dispatching" || item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running"
+            case "Klara":
+                matchesStatus = item.statusRawValue == "completed" || item.patchStatusRawValue == "completed"
+            case "Misslyckade":
+                matchesStatus = item.statusRawValue == "failed" || item.patchStatusRawValue == "failed"
             default: matchesStatus = true
             }
             let matchesProject = queueProjectFilter == "Alla projekt" || item.projectRepository == queueProjectFilter
