@@ -316,9 +316,19 @@ struct ProjectDetailView: View {
                                     Text("\(task.statusLabel) · Vikt \(max(1, min(task.weight ?? 1, 5))) av 5")
                                         .font(.system(size: 9)).foregroundStyle(StudioTheme.muted)
                                     if let prURL = task.verificationPRURL, let url = URL(string: prURL) {
-                                        Link("Verifierad via GitHub PR", destination: url)
-                                            .font(.system(size: 9, weight: .medium))
-                                            .foregroundStyle(.green)
+                                        HStack(spacing: 8) {
+                                            Link("Verifierad via GitHub PR", destination: url)
+                                                .foregroundStyle(.green)
+                                            if let sha = task.verificationCommitSHA {
+                                                Text(String(sha.prefix(7)))
+                                                    .foregroundStyle(StudioTheme.muted)
+                                            }
+                                            if let checksURL = task.verificationWorkflowURL, let checks = URL(string: checksURL) {
+                                                Link("Kontroller", destination: checks)
+                                                    .foregroundStyle(StudioTheme.accentCyan)
+                                            }
+                                        }
+                                        .font(.system(size: 9, weight: .medium))
                                     }
                                 }
                                 Spacer()
