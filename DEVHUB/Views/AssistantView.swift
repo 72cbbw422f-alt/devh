@@ -440,6 +440,38 @@ struct AssistantView: View {
             .padding(11)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+            if !recordedUsageItems.isEmpty {
+                DisclosureGroup {
+                    ForEach(Array(Dictionary(grouping: recordedUsageItems, by: \.projectRepository).keys.sorted()), id: \.self) { repository in
+                        let projectItems = recordedUsageItems.filter { $0.projectRepository == repository }
+                        let projectCost = projectItems.reduce(0.0) { $0 + $1.costUSD }
+                        let projectInput = projectItems.reduce(0) { $0 + $1.inputTokens }
+                        let projectOutput = projectItems.reduce(0) { $0 + $1.outputTokens }
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(repository.replacingOccurrences(of: "72cbbw422f-alt/", with: ""))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(StudioTheme.text)
+                                Spacer()
+                                Text("$\(projectCost, format: .number.precision(.fractionLength(5)))")
+                                    .font(.caption.monospacedDigit().weight(.semibold))
+                                    .foregroundStyle(StudioTheme.accentCyan)
+                            }
+                            Text("\(projectItems.count) uppdrag · \(projectInput.formatted()) in · \(projectOutput.formatted()) ut")
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(StudioTheme.secondaryText)
+                        }
+                        .padding(.vertical, 5)
+                    }
+                } label: {
+                    Label("Kostnad per projekt", systemImage: "square.grid.2x2")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(StudioTheme.text)
+                }
+                .tint(StudioTheme.accentCyan)
+                .padding(11)
+                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+            }
             Picker("Visa", selection: $queueFilter) {
                 Text("Alla").tag("Alla")
                 Text("Aktiva").tag("Aktiva")
