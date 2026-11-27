@@ -11,7 +11,7 @@ private struct AssistantRepository: Identifiable {
 
 struct AssistantView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \ByteWorkItem.createdAt, order: .reverse) private var byteWorkItems: [ByteWorkItem]
+    @Query(sort: \ByteWorkItem.updatedAt, order: .reverse) private var byteWorkItems: [ByteWorkItem]
     @Query private var projectTasks: [ProjectTaskItem]
     @Query private var projectMilestones: [ProjectMilestoneItem]
     @State private var selectedRepository = "72cbbw422f-alt/project-orbit"
@@ -271,7 +271,7 @@ struct AssistantView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.turn.down.right")
                         .foregroundStyle(StudioTheme.accentCyan)
-                    Text("Fortsätter ett befintligt Byte-samtal")
+                    Text(workMode == "collaborate" ? "Fortsätter ett befintligt Byte-samtal" : "Välj Samarbeta för att behålla samtalets sammanhang")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.accentCyan)
                     Spacer()
@@ -416,7 +416,8 @@ struct AssistantView: View {
                                 Button {
                                     analysisText = savedAnalysis
                                     analysisTaskProposalJSON = item.taskProposalJSON
-                                    continuingFromResponseID = item.conversationResponseID
+                                    analysisRepository = item.projectRepository
+                                    selectedRepository = item.projectRepository
                                     statusMessage = "Visar sparad analys: " + item.title
                                 } label: {
                                     Label("Visa sparad analys", systemImage: "doc.text.magnifyingglass")
