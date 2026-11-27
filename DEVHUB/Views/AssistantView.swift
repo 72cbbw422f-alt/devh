@@ -354,7 +354,7 @@ struct AssistantView: View {
                             ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
                             ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
                     }) &&
-                    !byteWorkItems.contains(where: { $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" })
+                    !byteWorkItems.contains(where: { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" })
                 ))
                 .accessibilityLabel("Uppdatera arbetskön")
             }
