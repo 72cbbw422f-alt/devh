@@ -1,4 +1,5 @@
 name: DEVHUB Apply Approved Patch
+run-name: ${{ inputs.task_title }}
 
 on:
   workflow_dispatch:
