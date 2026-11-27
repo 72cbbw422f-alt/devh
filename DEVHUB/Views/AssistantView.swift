@@ -488,8 +488,16 @@ struct AssistantView: View {
                                             Label("PR skapad · redo för granskning", systemImage: "checkmark.circle.fill")
                                                 .font(.caption.weight(.semibold)).foregroundStyle(.green)
                                         case "failed":
-                                            Label("GitHub kunde inte skapa PR", systemImage: "exclamationmark.circle.fill")
-                                                .font(.caption.weight(.semibold)).foregroundStyle(.red)
+                                            VStack(alignment: .leading, spacing: 7) {
+                                                Label("GitHub kunde inte skapa PR", systemImage: "exclamationmark.circle.fill")
+                                                    .font(.caption.weight(.semibold)).foregroundStyle(.red)
+                                                Button { approvePatch(for: item) } label: {
+                                                    Label("Försök skapa PR igen", systemImage: "arrow.clockwise")
+                                                        .font(.caption.weight(.semibold))
+                                                }
+                                                .tint(StudioTheme.accent)
+                                                .disabled(item.baseCommitSHA == nil || !patchPreview.contains("--- ") || !patchPreview.contains("+++ "))
+                                            }
                                         default:
                                             Button { approvePatch(for: item) } label: {
                                                 Label("Godkänn och skapa PR", systemImage: "checkmark.shield")
