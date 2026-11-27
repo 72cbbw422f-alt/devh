@@ -1008,13 +1008,13 @@ struct AssistantView: View {
         }
     }
     private func refreshPendingApprovedPatchStatuses() {
-        for item in byteWorkItems where item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" {
+        for item in byteWorkItems where item.patchStatusRawValue == "dispatching" || item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" {
             refreshApprovedPatchStatus(for: item)
         }
     }
 
     private func refreshApprovedPatchStatus(for item: ByteWorkItem) {
-        guard item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" else { return }
+        guard item.patchStatusRawValue == "dispatching" || item.patchStatusRawValue == "dispatched" || item.patchStatusRawValue == "running" else { return }
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
             return
