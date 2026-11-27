@@ -945,6 +945,7 @@ struct AssistantView: View {
         statusMessage = nil
         workflowURL = nil
         analysisText = nil
+        analysisTaskProposalJSON = nil
         runStatus = "Skickar uppdraget till GitHub…"
         let startedAt = Date()
         Task {
@@ -990,12 +991,15 @@ struct AssistantView: View {
                     do {
                         let text = try await GitHubWorkflowClient.fetchAnalysis(runID: result.id, token: token)
                         let responseID = extractResponseID(from: text)
+                        let proposalJSON = extractTaskProposalJSON(from: text)
                         let cleanText = cleanAnalysis(from: text, responseID: responseID)
                         await MainActor.run {
                             analysisText = cleanText
+                            analysisTaskProposalJSON = proposalJSON
                             if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                                 applyUsage(from: text, to: item)
                                 item.analysisText = cleanText
+                                item.taskProposalJSON = proposalJSON
                                 item.patchPreview = extractPatchPreview(from: text)
                                 item.baseCommitSHA = extractBaseSHA(from: text)
                                 item.conversationResponseID = responseID
