@@ -954,6 +954,7 @@ struct AssistantView: View {
         item.patchStatusRawValue = "dispatching"
         item.patchWorkflowRunID = nil
         item.patchWorkflowURL = nil
+        item.patchPullRequestURL = nil
         let startedAt = Date()
         item.patchDispatchedAt = startedAt
         item.patchFailureDetails = nil
