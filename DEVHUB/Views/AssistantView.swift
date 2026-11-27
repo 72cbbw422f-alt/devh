@@ -550,11 +550,11 @@ struct AssistantView: View {
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(queueHistoryColor(for: item))
                             HStack(spacing: 6) {
-                                if item.analysisText != nil && item.patchPreview != nil {
+                                if queueHasAnalysis(item) && queueHasPatch(item) {
                                     Label("Analys + kodförslag", systemImage: "doc.text.magnifyingglass")
-                                } else if item.patchPreview != nil {
+                                } else if queueHasPatch(item) {
                                     Label("Kodförslag", systemImage: "chevron.left.forwardslash.chevron.right")
-                                } else if item.analysisText != nil {
+                                } else if queueHasAnalysis(item) {
                                     Label("Analysresultat", systemImage: "text.alignleft")
                                 } else {
                                     Label("Uppdrag", systemImage: "tray")
@@ -1039,6 +1039,14 @@ struct AssistantView: View {
         .accessibilityHint("Filtrerar arbetskön efter denna status")
     }
 
+    private func queueHasAnalysis(_ item: ByteWorkItem) -> Bool {
+        !(item.analysisText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
+    private func queueHasPatch(_ item: ByteWorkItem) -> Bool {
+        !(item.patchPreview?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
     private var filteredQueueItems: [ByteWorkItem] {
         byteWorkItems.filter { item in
             let matchesStatus: Bool
@@ -1050,8 +1058,8 @@ struct AssistantView: View {
             default: matchesStatus = true
             }
             let matchesProject = queueProjectFilter == "Alla projekt" || item.projectRepository == queueProjectFilter
-            let hasAnalysis = !(item.analysisText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-            let hasPatch = !(item.patchPreview?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            let hasAnalysis = queueHasAnalysis(item)
+            let hasPatch = queueHasPatch(item)
             let matchesContent: Bool
             switch queueContentFilter {
             case "Har analys": matchesContent = hasAnalysis
