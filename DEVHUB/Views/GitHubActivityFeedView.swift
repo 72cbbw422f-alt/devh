@@ -350,11 +350,12 @@ struct GitHubActivityFeedView: View {
             }
         }
         let previousKeys = Set(seenKeysStorage.split(separator: "\n").map(String.init))
-        if !hasActivityBaseline {
-            // First successful scan establishes a baseline; it must not alert on old activity.
+        if !hasActivityBaseline && failedProjects.isEmpty && !latest.isEmpty {
+            // Establish the baseline only after every configured repository was scanned.
+            // A partial first scan must not turn older events into false "new activity" alerts.
             seenKeysStorage = observedEventKeys.sorted().joined(separator: "\n")
             hasActivityBaseline = true
-        } else {
+        } else if hasActivityBaseline {
             let newKeys = observedEventKeys.subtracting(previousKeys)
             for key in newKeys {
                 if key.hasPrefix("workflow|") {
