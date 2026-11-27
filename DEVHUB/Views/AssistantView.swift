@@ -985,7 +985,7 @@ struct AssistantView: View {
                 }
             } catch {
                 await MainActor.run {
-                    statusMessage = "Statusen kunde inte bekräftas: \\(error.localizedDescription)"
+                    statusMessage = "Statusen kunde inte bekräftas: \(error.localizedDescription)"
                 }
             }
         }
