@@ -516,7 +516,7 @@ struct AssistantView: View {
                          ? "Inga uppdrag ännu. Skicka ett uppdrag till Byte så visas det här."
                          : "Inga uppdrag matchar dina filter.")
                         .font(.caption).foregroundStyle(StudioTheme.muted)
-                    if !queueSearch.isEmpty == false || queueFilter != "Alla" || queueProjectFilter != "Alla projekt" || queueContentFilter != "Alla innehåll" {
+                    if !queueSearch.isEmpty || queueFilter != "Alla" || queueProjectFilter != "Alla projekt" || queueContentFilter != "Alla innehåll" {
                         Button {
                             queueSearch = ""
                             queueFilter = "Alla"
