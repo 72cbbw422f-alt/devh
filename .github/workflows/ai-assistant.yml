@@ -1,4 +1,5 @@
 name: DEVHUB AI Assistant
+run-name: ${{ inputs.task }}
 
 on:
   workflow_dispatch:
