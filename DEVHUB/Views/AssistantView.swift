@@ -365,7 +365,7 @@ struct AssistantView: View {
             }
             let pendingPatchCount = byteWorkItems.filter { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count
             if pendingPatchCount > 0 {
-                Label("Automatisk GitHub-kontroll aktiv · \\(pendingPatchCount) väntande förslag · var 60:e sekund", systemImage: "arrow.triangle.2.circlepath")
+                Label("Automatisk GitHub-kontroll aktiv · \(pendingPatchCount) väntande förslag · var 60:e sekund", systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(StudioTheme.accentCyan)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -426,11 +426,11 @@ struct AssistantView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.text)
                     Spacer()
-                    Text("$\\(recordedCostUSD, format: .number.precision(.fractionLength(5)))")
+                    Text("$\(recordedCostUSD, format: .number.precision(.fractionLength(5)))")
                         .font(.caption.monospacedDigit().weight(.semibold))
                         .foregroundStyle(StudioTheme.accentCyan)
                 }
-                Text("\\(recordedUsageItems.count) uppdrag med kostnadsdata · \\(recordedInputTokens.formatted()) in · \\(recordedOutputTokens.formatted()) ut")
+                Text("\(recordedUsageItems.count) uppdrag med kostnadsdata · \(recordedInputTokens.formatted()) in · \(recordedOutputTokens.formatted()) ut")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(StudioTheme.secondaryText)
                 Text("Summering av sparad användningsdata i arbetskön. Beloppet visas i USD och är ingen faktura eller kostnadsspärr.")
@@ -1207,7 +1207,7 @@ struct AssistantView: View {
                 }
             } catch {
                 await MainActor.run {
-                    statusMessage = "Felorsaken kunde inte hämtas: \\(error.localizedDescription)"
+                    statusMessage = "Felorsaken kunde inte hämtas: \(error.localizedDescription)"
                 }
             }
         }
