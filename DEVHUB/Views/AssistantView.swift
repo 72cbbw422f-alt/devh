@@ -436,10 +436,10 @@ struct AssistantView: View {
             .pickerStyle(.menu)
             .tint(StudioTheme.accentCyan)
             HStack(spacing: 8) {
-                queueMetric(title: "Aktiva", count: byteWorkItems.filter { queueIsActive($0) }.count, color: StudioTheme.accent)
-                queueMetric(title: "PR väntar", count: byteWorkItems.filter { queueIsPatchPending($0) }.count, color: .orange)
-                queueMetric(title: "Klara", count: byteWorkItems.filter { queueIsCompleted($0) }.count, color: StudioTheme.accentCyan)
-                queueMetric(title: "Fel", count: byteWorkItems.filter { queueIsFailed($0) }.count, color: .red)
+                queueMetric(title: "Aktiva", count: byteWorkItems.filter { queueIsActive($0) }.count, color: StudioTheme.accent) { queueFilter = "Aktiva" }
+                queueMetric(title: "PR väntar", count: byteWorkItems.filter { queueIsPatchPending($0) }.count, color: .orange) { queueFilter = "PR väntar" }
+                queueMetric(title: "Klara", count: byteWorkItems.filter { queueIsCompleted($0) }.count, color: StudioTheme.accentCyan) { queueFilter = "Klara" }
+                queueMetric(title: "Fel", count: byteWorkItems.filter { queueIsFailed($0) }.count, color: .red) { queueFilter = "Misslyckade" }
             }
             let recordedUsageItems = byteWorkItems.filter { $0.inputTokens > 0 || $0.outputTokens > 0 }
             let recordedCostUSD = recordedUsageItems.reduce(0.0) { $0 + $1.costUSD }
@@ -1014,18 +1014,29 @@ struct AssistantView: View {
         }
     }
 
-    private func queueMetric(title: String, count: Int, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(count.formatted())
-                .font(.headline.monospacedDigit())
-                .foregroundStyle(color)
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(StudioTheme.muted)
+    private func queueMetric(title: String, count: Int, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(count.formatted())
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(color)
+                HStack(spacing: 4) {
+                    Text(title)
+                        .font(.caption2)
+                        .foregroundStyle(StudioTheme.muted)
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(StudioTheme.muted)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: 10))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+        .buttonStyle(.plain)
+        .accessibilityLabel("Visa \(title.lowercased()), \(count) uppdrag")
+        .accessibilityHint("Filtrerar arbetskön efter denna status")
     }
 
     private var filteredQueueItems: [ByteWorkItem] {
