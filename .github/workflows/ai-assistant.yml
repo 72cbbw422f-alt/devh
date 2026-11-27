@@ -138,13 +138,15 @@ jobs:
           Cite exact file paths and never claim to modify files.
           Do not reproduce credentials or secret values if any remain in the supplied context.
           Reply in Swedish unless asked otherwise.
-          At the end of every analysis, append a machine-readable task proposal block exactly in this form:
+          For project analysis modes only, append a machine-readable task proposal block exactly in this form:
           <!-- DEVHUB_TASKS_BEGIN -->
           [{"title":"Task title","milestone":"Exact milestone title","weight":1}]
           <!-- DEVHUB_TASKS_END -->
           Return valid JSON only between the markers. Suggest 1-8 concrete, verifiable next actions relevant to the selected repository. Use only milestone titles supported by the repository context; if no milestone is clearly supported, use an empty string. Weight must be an integer from 1 to 5. These are proposals only: never claim they are completed, and do not include already completed work.
 
           Working mode: """ + mode + "\n" + mode_guidance
+          if mode == "quick":
+              system += "\\nFor quick mode, answer only the question. Do not append task proposal markers or JSON."
           quick_mode = mode == "quick"
           user_content = "Question: " + os.environ["TASK"]
           if not quick_mode:
