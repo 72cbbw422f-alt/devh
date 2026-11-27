@@ -211,9 +211,20 @@ private actor GitHubRepositoryCache {
     func storeWorkflow(_ value: GitHubWorkflowRunSnapshot?, for key: String) {
         workflowEntries[key] = WorkflowEntry(value: value, savedAt: Date())
     }
+
+    func invalidate(for key: String) {
+        entries.removeValue(forKey: key)
+        workflowEntries.removeValue(forKey: key)
+        workItemsEntries.removeValue(forKey: key)
+    }
 }
 
 struct GitHubRepositoryService {
+
+    func invalidateCache(repository: String) async throws {
+        let path = try validatedPath(repository)
+        await GitHubRepositoryCache.shared.invalidate(for: path)
+    }
 
     func verifyMergedPullRequest(url rawURL: String, expectedRepository: String) async throws -> GitHubPullRequestVerification {
         guard let url = URL(string: rawURL.trimmingCharacters(in: .whitespacesAndNewlines)),
