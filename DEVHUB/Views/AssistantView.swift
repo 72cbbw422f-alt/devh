@@ -378,6 +378,29 @@ struct AssistantView: View {
                     .foregroundStyle(StudioTheme.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 9) {
+                    Label("Aktiva – Byte har fått uppdraget eller arbetar med det.", systemImage: "hourglass")
+                    Label("PR väntar – ett godkänt kodförslag behandlas av GitHub.", systemImage: "arrow.triangle.pull")
+                    Label("Klara – analysen eller PR-arbetsflödet är färdigt.", systemImage: "checkmark.circle")
+                    Label("Misslyckade – öppna uppdraget och läs felinformationen innan du försöker igen.", systemImage: "exclamationmark.triangle")
+                    Text("Status uppdateras automatiskt ungefär var 60:e sekund när vyn är aktiv. Du kan också trycka på uppdateringssymbolen. Om appen säger timeout kan GitHub fortfarande arbeta – skicka inte samma uppdrag igen innan du kontrollerat körningen.")
+                        .font(.caption2)
+                        .foregroundStyle(StudioTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.caption)
+                .foregroundStyle(StudioTheme.secondaryText)
+                .padding(.top, 8)
+            } label: {
+                Label("Vad betyder statusarna?", systemImage: "questionmark.circle")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(StudioTheme.accentCyan)
+            }
+            .tint(StudioTheme.accentCyan)
+            .padding(11)
+            .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+
             TextField("Sök uppdrag eller analys", text: $queueSearch)
                 .textFieldStyle(.plain)
                 .padding(11)
