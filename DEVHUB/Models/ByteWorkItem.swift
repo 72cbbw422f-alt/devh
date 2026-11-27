@@ -28,6 +28,7 @@ final class ByteWorkItem {
 
     var workModeLabel: String {
         switch workModeRawValue {
+        case "quick": "Snabbt svar"
         case "collaborate": "Samarbeta"
         case "autopilot": "Autopilot"
         default: "Godkänn först"
