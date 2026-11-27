@@ -223,11 +223,23 @@ struct GitHubRepositoryService {
         let pullRequest: GitHubPullRequestSnapshot = try await request(prURL)
         guard pullRequest.merged else { throw GitHubRepositoryError.pullRequestNotMerged }
 
-        let checksURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/check-runs?per_page=100")!
-        let checks: GitHubCheckRunsResponse = try await request(checksURL)
-        guard !checks.checkRuns.isEmpty,
-              checks.totalCount == checks.checkRuns.count,
-              checks.checkRuns.allSatisfy({ $0.status == "completed" && $0.conclusion == "success" }) else {
+        let checksBaseURL = "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/check-runs"
+        var allCheckRuns: [GitHubCheckRunsResponse.CheckRun] = []
+        var expectedCheckCount: Int?
+        var page = 1
+        repeat {
+            guard let checksURL = URL(string: "\(checksBaseURL)?per_page=100&page=\(page)") else {
+                throw GitHubRepositoryError.requestFailed
+            }
+            let checks: GitHubCheckRunsResponse = try await request(checksURL)
+            expectedCheckCount = checks.totalCount
+            allCheckRuns.append(contentsOf: checks.checkRuns)
+            page += 1
+        } while allCheckRuns.count < (expectedCheckCount ?? 0)
+
+        guard !allCheckRuns.isEmpty,
+              allCheckRuns.count == expectedCheckCount,
+              allCheckRuns.allSatisfy({ $0.status == "completed" && $0.conclusion == "success" }) else {
             throw GitHubRepositoryError.checksNotSuccessful
         }
         let statusURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/status")!
@@ -235,7 +247,7 @@ struct GitHubRepositoryService {
         if combinedStatus.totalCount > 0 && combinedStatus.state != "success" {
             throw GitHubRepositoryError.checksNotSuccessful
         }
-        let workflowURL = checks.checkRuns.compactMap { $0.htmlURL }.first ?? pullRequest.htmlURL
+        let workflowURL = allCheckRuns.compactMap { $0.htmlURL }.first ?? pullRequest.htmlURL
         return GitHubPullRequestVerification(pullRequestURL: pullRequest.htmlURL, commitSHA: pullRequest.head.sha, workflowURL: workflowURL)
     }
 
