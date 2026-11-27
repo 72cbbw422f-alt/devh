@@ -335,12 +335,15 @@ struct AssistantView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                 }
-                .disabled(isRefreshingQueue || !byteWorkItems.contains(where: {
-                    guard let runID = $0.workflowRunID else { return false }
-                    return $0.statusRawValue == "running" ||
-                        ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
-                        ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
-                }))
+                .disabled(isRefreshingQueue || (
+                    !byteWorkItems.contains(where: {
+                        guard let runID = $0.workflowRunID else { return false }
+                        return $0.statusRawValue == "running" ||
+                            ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
+                            ($0.statusRawValue == "failed" && $0.workflowFailureDetails == nil)
+                    }) &&
+                    !byteWorkItems.contains(where: { $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" })
+                ))
                 .accessibilityLabel("Uppdatera arbetskön")
             }
             let pendingPatchCount = byteWorkItems.filter { $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" }.count
