@@ -65,7 +65,7 @@ Roadmap skiljer mellan två typer av framsteg:
 - **Planerat framsteg:** projektets manuella planeringsvärde och nästa milstolpe.
 - **Checklistor:** sparade projektuppgifter som markerats klara. Vyn visar både antal klara uppgifter och andelen per projekt.
 
-Checklistor visar vad som har markerats klart i DEVHUB. De är inte automatiskt verifierade mot GitHub och ska inte tolkas som bevis på att kod har mergats eller släppts. För faktisk GitHub-status, senaste commit och Actions-resultat använder du fliken **Utveckling**.
+Roadmap redovisar GitHub-verifierade uppgifter separat från manuellt klarmarkerade uppgifter. En uppgift blir GitHub-verifierad först när dess pull request är mergad och GitHub-kontrollerna har godkänts. Manuellt klarmarkerade uppgifter är inte bevis på att kod har mergats eller släppts. För faktisk GitHub-status, senaste commit och Actions-resultat använder du fliken **Utveckling**.
 
 ## 7. Om något verkar ha fastnat
 
