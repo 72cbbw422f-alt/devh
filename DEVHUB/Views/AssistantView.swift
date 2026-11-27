@@ -440,9 +440,14 @@ struct AssistantView: View {
             .padding(11)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 10))
+            let usageRepositories = Dictionary(grouping: recordedUsageItems, by: \.projectRepository).keys.sorted { lhs, rhs in
+                let lhsCost = recordedUsageItems.filter { $0.projectRepository == lhs }.reduce(0.0) { $0 + $1.costUSD }
+                let rhsCost = recordedUsageItems.filter { $0.projectRepository == rhs }.reduce(0.0) { $0 + $1.costUSD }
+                return lhsCost == rhsCost ? lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending : lhsCost > rhsCost
+            }
             if !recordedUsageItems.isEmpty {
                 DisclosureGroup {
-                    ForEach(Array(Dictionary(grouping: recordedUsageItems, by: \.projectRepository).keys.sorted()), id: \.self) { repository in
+                    ForEach(usageRepositories, id: \.self) { repository in
                         let projectItems = recordedUsageItems.filter { $0.projectRepository == repository }
                         let projectCost = projectItems.reduce(0.0) { $0 + $1.costUSD }
                         let projectInput = projectItems.reduce(0) { $0 + $1.inputTokens }
