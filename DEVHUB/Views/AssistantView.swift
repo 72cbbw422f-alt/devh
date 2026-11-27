@@ -22,6 +22,7 @@ struct AssistantView: View {
     @State private var queueProjectFilter = "Alla projekt"
     @State private var showsAllQueueItems = false
     @State private var isRefreshingQueue = false
+    @State private var queueFailureDetails: [Int: String] = [:]
     @State private var githubToken = ""
     @State private var hasSavedToken = false
     @State private var isSending = false
@@ -332,7 +333,10 @@ struct AssistantView: View {
                     }
                 }
                 .disabled(isRefreshingQueue || !byteWorkItems.contains(where: {
-                    $0.workflowRunID != nil && ($0.statusRawValue == "running" || ($0.statusRawValue == "completed" && $0.analysisText == nil))
+                    guard let runID = $0.workflowRunID else { return false }
+                    return $0.statusRawValue == "running" ||
+                        ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
+                        ($0.statusRawValue == "failed" && queueFailureDetails[runID] == nil)
                 }))
                 .accessibilityLabel("Uppdatera arbetskön")
             }
@@ -449,6 +453,26 @@ struct AssistantView: View {
                                         Text("Kan inte godkännas ännu: grundversionen saknas. Uppdatera analysen.")
                                             .font(.caption2).foregroundStyle(.orange)
                                     }
+                                }
+                            }
+                            if item.statusRawValue == "failed", let runID = item.workflowRunID {
+                                if let details = queueFailureDetails[runID] {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Label("Felorsak", systemImage: "exclamationmark.triangle.fill")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.red)
+                                        Text(details)
+                                            .font(.caption2)
+                                            .foregroundStyle(StudioTheme.secondaryText)
+                                            .textSelection(.enabled)
+                                    }
+                                    .padding(9)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(StudioTheme.background, in: RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    Text("Felorsak kan hämtas från GitHub. Tryck på uppdatera-knappen ovan.")
+                                        .font(.caption2)
+                                        .foregroundStyle(StudioTheme.muted)
                                 }
                             }
                             if let analysis = item.analysisText, !analysis.isEmpty {
@@ -570,7 +594,10 @@ struct AssistantView: View {
             return
         }
         let pendingItems = byteWorkItems.filter {
-            $0.workflowRunID != nil && ($0.statusRawValue == "running" || ($0.statusRawValue == "completed" && $0.analysisText == nil))
+            guard let runID = $0.workflowRunID else { return false }
+            return $0.statusRawValue == "running" ||
+                ($0.statusRawValue == "completed" && $0.analysisText == nil) ||
+                ($0.statusRawValue == "failed" && queueFailureDetails[runID] == nil)
         }
         guard !pendingItems.isEmpty else { return }
         isRefreshingQueue = true
@@ -603,6 +630,10 @@ struct AssistantView: View {
                                 ))
                             }
                         }
+                    }
+                    if status.status == "completed", status.conclusion != "success" {
+                        let details = try await GitHubWorkflowClient.fetchFailureSummary(runID: runID, token: token)
+                        await MainActor.run { queueFailureDetails[runID] = details }
                     }
                     if shouldFetchAnalysis {
                         let analysis = try await GitHubWorkflowClient.fetchAnalysis(runID: runID, token: token)
@@ -1109,6 +1140,40 @@ private enum GitHubWorkflowClient {
     }
 
     struct RunStatus { let status: String; let conclusion: String?; let url: URL? }
+
+    private struct JobsResponse: Decodable { let jobs: [WorkflowJob] }
+    private struct WorkflowJob: Decodable {
+        let name: String
+        let conclusion: String?
+        let steps: [WorkflowStep]?
+    }
+    private struct WorkflowStep: Decodable {
+        let name: String
+        let conclusion: String?
+    }
+
+    static func fetchFailureSummary(runID: Int, token: String) async throws -> String {
+        let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\\(runID)/jobs?per_page=50")!
+        var request = URLRequest(url: endpoint)
+        request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw WorkflowError.statusCheck
+        }
+        let jobs = try JSONDecoder().decode(JobsResponse.self, from: data).jobs
+        let failures = jobs.flatMap { job -> [String] in
+            let failedSteps = (job.steps ?? []).filter { $0.conclusion == "failure" }.map { $0.name }
+            if failedSteps.isEmpty && job.conclusion == "failure" {
+                return ["\\(job.name): jobbet misslyckades (ingen enskild felande steg rapporterades)."]
+            }
+            return failedSteps.map { "\\(job.name) → \\($0)" }
+        }
+        return failures.isEmpty
+            ? "GitHub markerade körningen som misslyckad men rapporterade inget specifikt felsteg. Öppna körningen för fullständiga loggar."
+            : failures.joined(separator: "\\n")
+    }
 
     static func fetchRunStatus(runID: Int, token: String) async throws -> RunStatus {
         let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)")!
