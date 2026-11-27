@@ -265,7 +265,7 @@ struct GitHubActivityFeedView: View {
 
     private var refreshButton: some View {
         Button {
-            Task { await refresh() }
+            Task { await refresh(force: true) }
         } label: {
             Image(systemName: "arrow.clockwise")
                 .font(.caption.weight(.semibold))
@@ -277,7 +277,7 @@ struct GitHubActivityFeedView: View {
     }
 
     @MainActor
-    private func refresh() async {
+    private func refresh(force: Bool = false) async {
         guard !isLoading else { return }
         isLoading = true
         defer {
@@ -291,6 +291,9 @@ struct GitHubActivityFeedView: View {
         let service = GitHubRepositoryService()
         for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
+                if force {
+                    try await service.invalidateCache(repository: project.repository)
+                }
                 // Fetch the repository snapshot, latest Actions run and open
                 // issues/PRs concurrently. Serial requests made the dashboard
                 // wait for up to three network round-trips per project.
