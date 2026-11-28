@@ -27,6 +27,7 @@ final class ByteWorkItem {
     var patchWorkflowURL: String?
     var patchPullRequestURL: String?
     var patchDispatchedAt: Date?
+    var patchDispatchRequestID: String?
     var patchFailureDetails: String?
     var workflowFailureDetails: String?
     var analysisRecoveryDetails: String?
