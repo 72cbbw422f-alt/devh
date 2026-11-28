@@ -72,7 +72,7 @@ struct ProjectHealthOverviewView: View {
                 if isLoading {
                     ProgressView().tint(StudioTheme.accent)
                 } else {
-                    Button { Task { await refresh() } } label: {
+                    Button { Task { await refresh(force: true) } } label: {
                         Image(systemName: "arrow.clockwise")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(StudioTheme.accent)
@@ -208,7 +208,7 @@ struct ProjectHealthOverviewView: View {
     }
 
     @MainActor
-    private func refresh() async {
+    private func refresh(force: Bool = false) async {
         guard !isLoading else { return }
         isLoading = true
         defer {
@@ -220,6 +220,9 @@ struct ProjectHealthOverviewView: View {
         var results: [ProjectHealthState] = []
         for project in projects where !project.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
+                if force {
+                    try await service.invalidateCache(repository: project.repository)
+                }
                 async let snapshotResult = service.fetchSnapshot(repository: project.repository)
                 async let workflowResult = service.fetchLatestWorkflowRun(repository: project.repository)
                 let snapshot = try await snapshotResult
