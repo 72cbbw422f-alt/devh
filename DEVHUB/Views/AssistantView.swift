@@ -35,7 +35,7 @@ struct AssistantView: View {
     @State private var continuingFromResponseID: String?
     @State private var continuingFromTitle: String?
     @AppStorage("byte.workMode") private var workMode = "approval"
-    @AppStorage("byte.monthlyBudget") private var monthlyBudget = 200.0
+    @AppStorage("openAI.monthlyBudgetUSD") private var monthlyBudgetUSD = 25.0
     @FocusState private var focusedField: AssistantInput?
 
     private enum AssistantInput: Hashable { case token, task, budget }
@@ -204,11 +204,11 @@ struct AssistantView: View {
             Divider().overlay(StudioTheme.border)
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Månatligt AI-budgetmål").font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
-                    Text("Egen planering i kronor · ingen automatisk kostnadsspärr").font(.caption).foregroundStyle(StudioTheme.muted)
+                    Text("Gemensam månadsbudget").font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                    Text("Samma budget som i AI-ekonomi · USD").font(.caption).foregroundStyle(StudioTheme.muted)
                 }
                 Spacer()
-                TextField("200", value: $monthlyBudget, format: .number.precision(.fractionLength(0...2)))
+                TextField("25", value: $monthlyBudgetUSD, format: .number.precision(.fractionLength(0...2)))
                     .focused($focusedField, equals: .budget)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
@@ -216,8 +216,8 @@ struct AssistantView: View {
                     .padding(9)
                     .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
                     .foregroundStyle(StudioTheme.text)
-                    .accessibilityLabel("Månatligt AI-budgetmål i kronor")
-                Text("kr").font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
+                    .accessibilityLabel("Gemensam månadsbudget i amerikanska dollar")
+                Text("USD").font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
             }
         }.padding(15).frame(maxWidth: .infinity, alignment: .leading)
             .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
@@ -355,10 +355,9 @@ struct AssistantView: View {
                 }
                 .disabled(isRefreshingQueue || (
                     !byteWorkItems.contains(where: {
-                        guard let runID = $0.workflowRunID else { return false }
-                        return $0.statusRawValue == "running" ||
-                            ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
-                            ($0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
+                        $0.statusRawValue == "running" ||
+                            ($0.workflowRunID != nil && $0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
+                            ($0.workflowRunID != nil && $0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
                     }) &&
                     !byteWorkItems.contains(where: { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" })
                 ))
@@ -445,9 +444,10 @@ struct AssistantView: View {
             let recordedCostUSD = recordedUsageItems.reduce(0.0) { $0 + $1.costUSD }
             let recordedInputTokens = recordedUsageItems.reduce(0) { $0 + $1.inputTokens }
             let recordedOutputTokens = recordedUsageItems.reduce(0) { $0 + $1.outputTokens }
+            let recordedCachedInputTokens = recordedUsageItems.reduce(0) { $0 + $1.cachedInputTokens }
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
-                    Label("Registrerad AI-användning", systemImage: "chart.bar.xaxis")
+                    Label("Uppskattad AI-kostnad", systemImage: "chart.bar.xaxis")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.text)
                     Spacer()
@@ -455,10 +455,10 @@ struct AssistantView: View {
                         .font(.caption.monospacedDigit().weight(.semibold))
                         .foregroundStyle(StudioTheme.accentCyan)
                 }
-                Text("\(recordedUsageItems.count) uppdrag med kostnadsdata · \(recordedInputTokens.formatted()) in · \(recordedOutputTokens.formatted()) ut")
+                Text("\(recordedUsageItems.count) uppdrag med kostnadsdata · \(recordedInputTokens.formatted()) in · \(recordedCachedInputTokens.formatted()) cachade · \(recordedOutputTokens.formatted()) ut")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(StudioTheme.secondaryText)
-                Text("Summering av sparad användningsdata i arbetskön. Beloppet visas i USD och är ingen faktura eller kostnadsspärr.")
+                Text("Uppskattning från tokenförbrukning och GPT-6.2 Sols standardpriser. Faktisk debitering och eventuella justeringar visas i AI-ekonomi.")
                     .font(.caption2)
                     .foregroundStyle(StudioTheme.muted)
             }
@@ -477,6 +477,7 @@ struct AssistantView: View {
                         let projectCost = projectItems.reduce(0.0) { $0 + $1.costUSD }
                         let projectInput = projectItems.reduce(0) { $0 + $1.inputTokens }
                         let projectOutput = projectItems.reduce(0) { $0 + $1.outputTokens }
+                        let projectCachedInput = projectItems.reduce(0) { $0 + $1.cachedInputTokens }
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
                                 Text(repository.replacingOccurrences(of: "72cbbw422f-alt/", with: ""))
@@ -487,14 +488,14 @@ struct AssistantView: View {
                                     .font(.caption.monospacedDigit().weight(.semibold))
                                     .foregroundStyle(StudioTheme.accentCyan)
                             }
-                            Text("\(projectItems.count) uppdrag · \(projectInput.formatted()) in · \(projectOutput.formatted()) ut")
+                            Text("\(projectItems.count) uppdrag · \(projectInput.formatted()) in · \(projectCachedInput.formatted()) cachade · \(projectOutput.formatted()) ut")
                                 .font(.caption2.monospacedDigit())
                                 .foregroundStyle(StudioTheme.secondaryText)
                         }
                         .padding(.vertical, 5)
                     }
                 } label: {
-                    Label("Kostnad per projekt", systemImage: "square.grid.2x2")
+                    Label("Uppskattad kostnad per projekt", systemImage: "square.grid.2x2")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.text)
                 }
@@ -576,7 +577,7 @@ struct AssistantView: View {
                             .font(.caption2)
                             .foregroundStyle(StudioTheme.muted)
                             if item.inputTokens > 0 || item.outputTokens > 0 {
-                                Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
+                                Text("\(item.inputTokens.formatted()) in · \(item.cachedInputTokens.formatted()) cachade · \(item.outputTokens.formatted()) ut · uppsk. $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(StudioTheme.accentCyan)
                             }
@@ -771,9 +772,17 @@ struct AssistantView: View {
                                     .tint(StudioTheme.accentCyan)
                                 }
                             } else if item.statusRawValue == "completed" {
-                                Text("Analysen är klar. Resultatet hämtas…")
-                                    .font(.caption)
-                                    .foregroundStyle(StudioTheme.muted)
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Label("Körningen är klar – analysen väntar på hämtning", systemImage: "clock.arrow.circlepath")
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(StudioTheme.muted)
+                                    if let recoveryDetails = item.analysisRecoveryDetails {
+                                        Text(recoveryDetails)
+                                            .font(.caption2)
+                                            .foregroundStyle(StudioTheme.secondaryText)
+                                            .textSelection(.enabled)
+                                    }
+                                }
                             }
                             HStack(spacing: 14) {
                                 if let responseID = item.conversationResponseID {
@@ -854,10 +863,9 @@ struct AssistantView: View {
             return
         }
         let pendingItems = byteWorkItems.filter {
-            guard let runID = $0.workflowRunID else { return false }
-            return $0.statusRawValue == "running" ||
-                ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
-                ($0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
+            $0.statusRawValue == "running" ||
+                ($0.workflowRunID != nil && $0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
+                ($0.workflowRunID != nil && $0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
         }
         guard !pendingItems.isEmpty else { return }
         isRefreshingQueue = true
@@ -866,9 +874,33 @@ struct AssistantView: View {
             var failedCount = 0
             var recoveredCount = 0
             var errorCount = 0
+            var notFoundCount = 0
+            var recoveryNotes: [String] = []
             for item in pendingItems {
-                guard let runID = item.workflowRunID else { continue }
                 do {
+                    var resolvedRunID = item.workflowRunID
+                    if resolvedRunID == nil {
+                        let recoveredRun = try await GitHubWorkflowClient.findRun(
+                            task: item.title,
+                            requestID: item.dispatchRequestID,
+                            startedAt: item.createdAt,
+                            token: token
+                        )
+                        guard let recoveredRun else {
+                            notFoundCount += 1
+                            await MainActor.run {
+                                item.analysisRecoveryDetails = "GitHub har ännu inte hittat någon matchande körning. DEVHUB försöker igen automatiskt."
+                            }
+                            continue
+                        }
+                        resolvedRunID = recoveredRun.id
+                        await MainActor.run {
+                            item.workflowRunID = recoveredRun.id
+                            item.workflowURL = recoveredRun.url?.absoluteString
+                            item.updatedAt = .now
+                        }
+                    }
+                    guard let runID = resolvedRunID else { continue }
                     let status = try await GitHubWorkflowClient.fetchRunStatus(runID: runID, token: token)
                     var shouldFetchAnalysis = false
                     await MainActor.run {
@@ -905,6 +937,7 @@ struct AssistantView: View {
                             applyUsage(from: analysis, to: item)
                             item.taskProposalJSON = extractTaskProposalJSON(from: analysis)
                             item.analysisText = cleanAnalysis(from: analysis, responseID: responseID)
+                            item.analysisRecoveryDetails = nil
                             item.patchPreview = extractPatchPreview(from: analysis)
                             item.baseCommitSHA = extractBaseSHA(from: analysis)
                             item.conversationResponseID = responseID ?? item.conversationResponseID
@@ -919,11 +952,23 @@ struct AssistantView: View {
                     }
                 } catch {
                     errorCount += 1
+                    recoveryNotes.append("\(item.title): \(error.localizedDescription)")
+                    await MainActor.run {
+                        item.analysisRecoveryDetails = error.localizedDescription
+                    }
                 }
             }
             await MainActor.run {
                 isRefreshingQueue = false
-                statusMessage = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
+                var summary = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade."
+                if notFoundCount > 0 {
+                    summary += " \(notFoundCount) uppdrag har ännu inte hittats hos GitHub och kontrolleras igen."
+                }
+                if errorCount > 0 {
+                    summary += " \(errorCount) kontroller misslyckades."
+                    summary += " " + recoveryNotes.prefix(2).joined(separator: " · ")
+                }
+                statusMessage = summary
             }
         }
     }
@@ -964,6 +1009,7 @@ struct AssistantView: View {
         guard let data = json.data(using: .utf8),
               let usage = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         item.inputTokens = usage["input_tokens"] as? Int ?? item.inputTokens
+        item.cachedInputTokens = usage["cached_input_tokens"] as? Int ?? item.cachedInputTokens
         item.outputTokens = usage["output_tokens"] as? Int ?? item.outputTokens
         item.costUSD = usage["cost_usd"] as? Double ?? item.costUSD
     }
@@ -1089,8 +1135,11 @@ struct AssistantView: View {
                 item.projectRepository,
                 item.analysisText ?? "",
                 item.workflowFailureDetails ?? "",
+                item.analysisRecoveryDetails ?? "",
                 item.patchFailureDetails ?? "",
-                item.patchPreview ?? ""
+                item.patchPreview ?? "",
+                item.workflowURL ?? "",
+                item.patchPullRequestURL ?? ""
             ]
             let matchesSearch = query.isEmpty
                 || searchableText.contains { $0.localizedCaseInsensitiveContains(query) }
@@ -1201,25 +1250,37 @@ struct AssistantView: View {
             statusMessage = "Kodförslaget saknar en giltig diff eller grundversion."; return
         }
         guard item.patchStatusRawValue != "dispatching" && item.patchStatusRawValue != "dispatched" else { return }
+        let previousPatchStatus = item.patchStatusRawValue
+        let patchRequestID = UUID().uuidString
         item.patchStatusRawValue = "dispatching"
+        item.patchDispatchRequestID = patchRequestID
         item.patchWorkflowRunID = nil
         item.patchWorkflowURL = nil
         item.patchPullRequestURL = nil
         let startedAt = Date()
         item.patchDispatchedAt = startedAt
         item.patchFailureDetails = nil
+        do {
+            try modelContext.save()
+        } catch {
+            item.patchStatusRawValue = previousPatchStatus
+            item.patchDispatchRequestID = nil
+            item.patchDispatchedAt = nil
+            statusMessage = "Godkännandet skickades inte eftersom DEVHUB inte kunde spara det: \(error.localizedDescription)"
+            return
+        }
         statusMessage = "Skickar ditt godkända förslag till GitHub…"
         Task {
             var dispatchAccepted = false
             do {
-                try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, token: token)
+                try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, requestID: patchRequestID, token: token)
                 dispatchAccepted = true
                 await MainActor.run {
                     item.patchStatusRawValue = "dispatched"
                     item.updatedAt = .now
                     statusMessage = "GitHub har tagit emot godkännandet. Väntar på att arbetsflödet startar…"
                 }
-                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), requestID: patchRequestID, token: token) { runID, runURL in
                     await MainActor.run {
                         item.patchWorkflowRunID = runID
                         item.patchWorkflowURL = runURL?.absoluteString
@@ -1331,9 +1392,16 @@ struct AssistantView: View {
                     }
                     return
                 }
+                guard let requestID = item.patchDispatchRequestID, !requestID.isEmpty else {
+                    await MainActor.run {
+                        statusMessage = "Det sparade godkännandet saknar sitt unika ID. Ingen ny körning skickas automatiskt."
+                    }
+                    return
+                }
                 let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(
                     startedAt: startedAt,
                     expectedTitle: String(item.title.prefix(120)),
+                    requestID: requestID,
                     token: token
                 ) { runID, runURL in
                     await MainActor.run {
@@ -1439,12 +1507,28 @@ struct AssistantView: View {
     }
 
     private func submitTask() {
+        guard !isSending else { return }
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
             return
         }
         let prompt = task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
+        let normalizedPrompt = prompt
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .lowercased()
+        if byteWorkItems.contains(where: {
+            $0.projectRepository == selectedRepository &&
+            ($0.statusRawValue == "queued" || $0.statusRawValue == "running") &&
+            $0.title
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                .lowercased() == normalizedPrompt
+        }) {
+            statusMessage = "Ett likadant uppdrag för det här projektet är redan aktivt. Kontrollera arbetskön innan du skickar igen."
+            return
+        }
         focusedField = nil
         analysisRepository = selectedRepository
         // A selected conversation must never silently become a fresh task because
@@ -1454,6 +1538,15 @@ struct AssistantView: View {
         let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt, workMode: submissionMode)
         queueItem.conversationResponseID = previousResponseID
         modelContext.insert(queueItem)
+        do {
+            // Persist the local recovery record before dispatching remotely. If the app
+            // closes or the request times out, the queue can still recover the GitHub run.
+            try modelContext.save()
+        } catch {
+            modelContext.delete(queueItem)
+            statusMessage = "Uppdraget skickades inte eftersom DEVHUB inte kunde spara det i arbetskön: \(error.localizedDescription)"
+            return
+        }
         let queueItemID = queueItem.id
         isSending = true
         statusMessage = nil
@@ -1463,8 +1556,10 @@ struct AssistantView: View {
         runStatus = "Skickar uppdraget till GitHub…"
         let startedAt = Date()
         Task {
+            var dispatchAccepted = false
             do {
-                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: submissionMode, previousResponseID: previousResponseID, token: token)
+                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, requestID: queueItem.dispatchRequestID, workMode: submissionMode, previousResponseID: previousResponseID, token: token)
+                dispatchAccepted = true
                 await MainActor.run {
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                         item.statusRawValue = "running"
@@ -1475,7 +1570,7 @@ struct AssistantView: View {
                     continuingFromResponseID = nil
                     continuingFromTitle = nil
                 }
-                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, expectedTask: prompt, token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, expectedTask: prompt, requestID: queueItem.dispatchRequestID, token: token) { runID, runURL in
                     await MainActor.run {
                         if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                             item.workflowRunID = runID
@@ -1545,16 +1640,23 @@ struct AssistantView: View {
                 await MainActor.run {
                     isSending = false
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
-                        item.statusRawValue = "failed"
+                        // Once GitHub accepts the dispatch, a polling or network error
+                        // must not turn a possibly running workflow into a false failure.
+                        item.statusRawValue = dispatchAccepted ? "running" : "failed"
                         item.updatedAt = .now
                     }
-                    statusMessage = error.localizedDescription
-                    runStatus = "Kunde inte bekräfta att AI-körningen blev klar."
-                    modelContext.insert(DEVHUBNotification(
-                        title: "Byte kunde inte slutföra uppdraget",
-                        message: error.localizedDescription,
-                        category: "issue"
-                    ))
+                    if dispatchAccepted {
+                        statusMessage = "GitHub tog emot uppdraget, men DEVHUB kunde inte bekräfta körningen ännu. Uppdraget ligger kvar som pågående och kontrolleras igen automatiskt. \(error.localizedDescription)"
+                        runStatus = "Statusen är osäker – uppdraget har inte markerats som misslyckat."
+                    } else {
+                        statusMessage = error.localizedDescription
+                        runStatus = "Kunde inte skicka AI-uppdraget till GitHub."
+                        modelContext.insert(DEVHUBNotification(
+                            title: "Byte kunde inte skicka uppdraget",
+                            message: error.localizedDescription,
+                            category: "issue"
+                        ))
+                    }
                 }
             }
         }
@@ -1659,6 +1761,30 @@ private enum GitHubWorkflowClient {
             : failures.joined(separator: "\n")
     }
 
+    static func findRun(task: String, requestID: String, startedAt: Date, token: String) async throws -> RunResult? {
+        let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/runs?per_page=20")!
+        var request = URLRequest(url: endpoint)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw WorkflowError.statusCheck
+        }
+        let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
+        let formatter = ISO8601DateFormatter()
+        guard let run = runs.first(where: {
+            $0.event == "workflow_dispatch" &&
+            $0.display_title == "\(requestID) · \(task)" &&
+            (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-30)
+        }) else { return nil }
+        return RunResult(
+            id: run.id,
+            message: "Återfann GitHub-körningen.",
+            url: URL(string: run.html_url)
+        )
+    }
+
     static func fetchRunStatus(runID: Int, token: String) async throws -> RunStatus {
         let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)")!
         var request = URLRequest(url: endpoint)
@@ -1676,6 +1802,7 @@ private enum GitHubWorkflowClient {
     static func waitForRun(
         startedAt: Date,
         expectedTask: String,
+        requestID: String,
         token: String,
         onRunFound: @escaping (Int, URL?) async -> Void
     ) async throws -> RunResult {
@@ -1693,7 +1820,7 @@ private enum GitHubWorkflowClient {
             if matchedRun == nil {
                 matchedRun = runs.first(where: {
                     $0.event == "workflow_dispatch" &&
-                    $0.display_title == expectedTask &&
+                    $0.display_title == "\(requestID) · \(expectedTask)" &&
                     (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
                 })
                 if let run = matchedRun {
@@ -1716,6 +1843,7 @@ private enum GitHubWorkflowClient {
     static func waitForApprovedPatchRun(
         startedAt: Date,
         expectedTitle: String,
+        requestID: String,
         token: String,
         onRunFound: @escaping (Int, URL?) async -> Void
     ) async throws -> RunResult {
@@ -1733,7 +1861,7 @@ private enum GitHubWorkflowClient {
             if matchedRun == nil {
                 matchedRun = runs.first(where: {
                     $0.event == "workflow_dispatch" &&
-                    $0.display_title == expectedTitle &&
+                    $0.display_title == "\(requestID) · \(expectedTitle)" &&
                     (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
                 })
                 if let run = matchedRun {
@@ -1793,34 +1921,58 @@ private enum GitHubWorkflowClient {
 
     static func fetchAnalysis(runID: Int, token: String) async throws -> String {
         let api = "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)/artifacts"
-        var request = URLRequest(url: URL(string: api)!)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        let (metadata, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.artifactUnavailable }
-        let artifacts = try JSONDecoder().decode(ArtifactsResponse.self, from: metadata).artifacts
-        guard let artifact = artifacts.first(where: { $0.name == "devhub-ai-result" }) else { throw WorkflowError.artifactUnavailable }
+        var lastError: Error = WorkflowError.artifactUnavailable
 
-        let downloadURL = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/artifacts/\(artifact.id)/zip")!
-        var downloadRequest = URLRequest(url: downloadURL)
-        downloadRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        downloadRequest.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        let (archiveData, downloadResponse) = try await URLSession.shared.data(for: downloadRequest)
-        guard let downloadHTTP = downloadResponse as? HTTPURLResponse, downloadHTTP.statusCode == 200 else { throw WorkflowError.artifactUnavailable }
+        // GitHub may report a completed run a few seconds before its artifact is ready.
+        // Retry briefly so a successful run is not mistaken for a missing result.
+        for attempt in 0..<4 {
+            do {
+                var request = URLRequest(url: URL(string: api)!)
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+                let (metadata, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                    throw WorkflowError.artifactUnavailable
+                }
+                let artifacts = try JSONDecoder().decode(ArtifactsResponse.self, from: metadata).artifacts
+                guard let artifact = artifacts.first(where: { $0.name == "devhub-ai-result" }) else {
+                    throw WorkflowError.artifactUnavailable
+                }
 
-        let archiveURL = FileManager.default.temporaryDirectory.appendingPathComponent("devhub-ai-\(runID).zip")
-        try archiveData.write(to: archiveURL, options: .atomic)
-        defer { try? FileManager.default.removeItem(at: archiveURL) }
-        guard let archive = Archive(url: archiveURL, accessMode: .read),
-              let entry = archive["analysis.md"] else { throw WorkflowError.artifactUnreadable }
-        var output = Data()
-        _ = try archive.extract(entry) { output.append($0) }
-        guard let result = String(data: output, encoding: .utf8), !result.isEmpty else { throw WorkflowError.artifactUnreadable }
-        return result
+                let downloadURL = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/artifacts/\(artifact.id)/zip")!
+                var downloadRequest = URLRequest(url: downloadURL)
+                downloadRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                downloadRequest.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                let (archiveData, downloadResponse) = try await URLSession.shared.data(for: downloadRequest)
+                guard let downloadHTTP = downloadResponse as? HTTPURLResponse, downloadHTTP.statusCode == 200 else {
+                    throw WorkflowError.artifactUnavailable
+                }
+
+                let archiveURL = FileManager.default.temporaryDirectory.appendingPathComponent("devhub-ai-\(runID).zip")
+                try archiveData.write(to: archiveURL, options: .atomic)
+                defer { try? FileManager.default.removeItem(at: archiveURL) }
+                guard let archive = Archive(url: archiveURL, accessMode: .read),
+                      let entry = archive["analysis.md"] else {
+                    throw WorkflowError.artifactUnreadable
+                }
+                var output = Data()
+                _ = try archive.extract(entry) { output.append($0) }
+                guard let result = String(data: output, encoding: .utf8), !result.isEmpty else {
+                    throw WorkflowError.artifactUnreadable
+                }
+                return result
+            } catch {
+                lastError = error
+                if attempt < 3 {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
+            }
+        }
+        throw lastError
     }
 
-    static func dispatchApprovedPatch(repository: String, baseSHA: String, patch: String, title: String, token: String) async throws {
+    static func dispatchApprovedPatch(repository: String, baseSHA: String, patch: String, title: String, requestID: String, token: String) async throws {
         let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/apply-byte-patch.yml/dispatches")!
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -1828,7 +1980,7 @@ private enum GitHubWorkflowClient {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["ref": "main", "inputs": ["project_repository": repository, "base_sha": baseSHA, "patch": patch, "task_title": String(title.prefix(120))]])
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["ref": "fix/project-history-notifications-navigation", "inputs": ["project_repository": repository, "base_sha": baseSHA, "patch": patch, "task_title": String(title.prefix(120)), "request_id": requestID]])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }
         guard (200...299).contains(http.statusCode) else {
@@ -1837,7 +1989,7 @@ private enum GitHubWorkflowClient {
             throw WorkflowError.http(http.statusCode, detail)
         }
     }
-    static func dispatch(repository: String, task: String, workMode: String, previousResponseID: String?, token: String) async throws {
+    static func dispatch(repository: String, task: String, requestID: String, workMode: String, previousResponseID: String?, token: String) async throws {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -1846,8 +1998,8 @@ private enum GitHubWorkflowClient {
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "ref": "main",
-            "inputs": ["project_repository": repository, "task": task, "work_mode": workMode, "previous_response_id": previousResponseID ?? ""]
+            "ref": "fix/project-history-notifications-navigation",
+            "inputs": ["project_repository": repository, "task": task, "request_id": requestID, "work_mode": workMode, "previous_response_id": previousResponseID ?? ""]
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }

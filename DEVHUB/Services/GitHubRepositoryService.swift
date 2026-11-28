@@ -8,7 +8,6 @@ struct GitHubRepositorySnapshot: Decodable, Sendable {
     let stargazersCount: Int
     let forksCount: Int
     let pushedAt: Date?
-
     enum CodingKeys: String, CodingKey {
         case fullName = "full_name"
         case htmlURL = "html_url"
@@ -20,7 +19,7 @@ struct GitHubRepositorySnapshot: Decodable, Sendable {
     }
 }
 
-struct GitHubCommitSnapshot: Decodable, Sendable {
+struct GitHubCommitSnapshot: Decodable, Identifiable, Sendable {
     struct Commit: Decodable, Sendable {
         struct Author: Decodable, Sendable {
             let name: String?
@@ -31,7 +30,7 @@ struct GitHubCommitSnapshot: Decodable, Sendable {
     }
     let htmlURL: URL
     let commit: Commit
-
+    var id: String { htmlURL.absoluteString }
     enum CodingKeys: String, CodingKey {
         case htmlURL = "html_url"
         case commit
@@ -58,23 +57,19 @@ struct GitHubWorkflowRunSnapshot: Decodable, Sendable {
     }
 }
 
-
 struct GitHubOpenWorkItem: Decodable, Identifiable, Sendable {
     struct PullRequestLink: Decodable, Sendable {
         let url: URL?
         enum CodingKeys: String, CodingKey { case url = "html_url" }
     }
-
     let number: Int
     let title: String
     let htmlURL: URL
     let updatedAt: Date
     let pullRequest: PullRequestLink?
-
     var id: Int { number }
     var kindLabel: String { pullRequest == nil ? "Issue" : "PR" }
     var symbol: String { pullRequest == nil ? "exclamationmark.circle" : "arrow.triangle.pull" }
-
     enum CodingKeys: String, CodingKey {
         case number, title
         case htmlURL = "html_url"
@@ -82,7 +77,6 @@ struct GitHubOpenWorkItem: Decodable, Identifiable, Sendable {
         case pullRequest = "pull_request"
     }
 }
-
 
 struct GitHubPullRequestVerification: Sendable {
     let pullRequestURL: URL
@@ -126,20 +120,16 @@ private struct GitHubCheckRunsResponse: Decodable {
 }
 
 enum GitHubRepositoryError: LocalizedError {
-    case invalidRepository
-    case notFound
-    case rateLimited
-    case requestFailed
-    case pullRequestNotMerged
-    case checksNotSuccessful
-    case invalidPullRequest
-
+    case invalidRepository, notFound, rateLimited, requestFailed, forbidden, unauthorized
+    case pullRequestNotMerged, checksNotSuccessful, invalidPullRequest
     var errorDescription: String? {
         switch self {
         case .invalidRepository: "Ange en giltig GitHub-adress i projektinställningarna."
         case .notFound: "Repositoryt kunde inte hittas eller är privat."
         case .rateLimited: "GitHub har tillfälligt begränsat antalet förfrågningar. Försök igen senare."
-        case .requestFailed: "Kunde inte hämta information från GitHub."
+        case .requestFailed: "GitHub svarade med ett oväntat fel. Försök igen."
+        case .forbidden: "GitHub nekade åtkomst eller API-gränsen har nåtts. Kontrollera tokenens behörigheter och försök igen senare."
+        case .unauthorized: "GitHub-tokenen är ogiltig eller har gått ut. Lägg in tokenen igen i DEVHUB."
         case .pullRequestNotMerged: "Pull requesten är inte mergad ännu."
         case .checksNotSuccessful: "Alla GitHub-kontroller måste vara klara och godkända innan uppgiften kan verifieras."
         case .invalidPullRequest: "Ange en giltig GitHub PR-länk till projektets repository."
@@ -154,64 +144,35 @@ private struct CachedGitHubRepository: Sendable {
 
 private actor GitHubRepositoryCache {
     static let shared = GitHubRepositoryCache()
-
-    private struct Entry {
-        let value: CachedGitHubRepository
-        let savedAt: Date
-    }
-    private struct WorkItemsEntry {
-        let value: [GitHubOpenWorkItem]
-        let savedAt: Date
-    }
-    private struct WorkflowEntry {
-        let value: GitHubWorkflowRunSnapshot?
-        let savedAt: Date
-    }
-
+    private struct Entry { let value: CachedGitHubRepository; let savedAt: Date }
+    private struct WorkItemsEntry { let value: [GitHubOpenWorkItem]; let savedAt: Date }
+    private struct WorkflowEntry { let value: GitHubWorkflowRunSnapshot?; let savedAt: Date }
     private var entries: [String: Entry] = [:]
     private var workflowEntries: [String: WorkflowEntry] = [:]
     private var workItemsEntries: [String: WorkItemsEntry] = [:]
     private let lifetime: TimeInterval = 300
 
     func value(for key: String) -> CachedGitHubRepository? {
-        guard let entry = entries[key],
-              Date().timeIntervalSince(entry.savedAt) < lifetime else {
-            entries.removeValue(forKey: key)
-            return nil
+        guard let entry = entries[key], Date().timeIntervalSince(entry.savedAt) < lifetime else {
+            entries.removeValue(forKey: key); return nil
         }
         return entry.value
     }
-
-    func store(_ value: CachedGitHubRepository, for key: String) {
-        entries[key] = Entry(value: value, savedAt: Date())
-    }
-
+    func store(_ value: CachedGitHubRepository, for key: String) { entries[key] = Entry(value: value, savedAt: Date()) }
     func workItemsValue(for key: String) -> [GitHubOpenWorkItem]? {
-        guard let entry = workItemsEntries[key],
-              Date().timeIntervalSince(entry.savedAt) < lifetime else {
-            workItemsEntries.removeValue(forKey: key)
-            return nil
+        guard let entry = workItemsEntries[key], Date().timeIntervalSince(entry.savedAt) < lifetime else {
+            workItemsEntries.removeValue(forKey: key); return nil
         }
         return entry.value
     }
-
-    func storeWorkItems(_ value: [GitHubOpenWorkItem], for key: String) {
-        workItemsEntries[key] = WorkItemsEntry(value: value, savedAt: Date())
-    }
-
+    func storeWorkItems(_ value: [GitHubOpenWorkItem], for key: String) { workItemsEntries[key] = WorkItemsEntry(value: value, savedAt: Date()) }
     func workflowValue(for key: String) -> GitHubWorkflowRunSnapshot?? {
-        guard let entry = workflowEntries[key],
-              Date().timeIntervalSince(entry.savedAt) < lifetime else {
-            workflowEntries.removeValue(forKey: key)
-            return nil
+        guard let entry = workflowEntries[key], Date().timeIntervalSince(entry.savedAt) < lifetime else {
+            workflowEntries.removeValue(forKey: key); return nil
         }
         return .some(entry.value)
     }
-
-    func storeWorkflow(_ value: GitHubWorkflowRunSnapshot?, for key: String) {
-        workflowEntries[key] = WorkflowEntry(value: value, savedAt: Date())
-    }
-
+    func storeWorkflow(_ value: GitHubWorkflowRunSnapshot?, for key: String) { workflowEntries[key] = WorkflowEntry(value: value, savedAt: Date()) }
     func invalidate(for key: String) {
         entries.removeValue(forKey: key)
         workflowEntries.removeValue(forKey: key)
@@ -220,7 +181,6 @@ private actor GitHubRepositoryCache {
 }
 
 struct GitHubRepositoryService {
-
     func invalidateCache(repository: String) async throws {
         let path = try validatedPath(repository)
         await GitHubRepositoryCache.shared.invalidate(for: path)
@@ -228,65 +188,43 @@ struct GitHubRepositoryService {
 
     func verifyMergedPullRequest(url rawURL: String, expectedRepository: String) async throws -> GitHubPullRequestVerification {
         guard let url = URL(string: rawURL.trimmingCharacters(in: .whitespacesAndNewlines)),
-              url.scheme == "https", url.host == "github.com" else {
-            throw GitHubRepositoryError.invalidPullRequest
-        }
+              url.scheme == "https", url.host == "github.com" else { throw GitHubRepositoryError.invalidPullRequest }
         let parts = url.path.split(separator: "/")
-        guard parts.count == 4, parts[2] == "pull", let number = Int(parts[3]) else {
-            throw GitHubRepositoryError.invalidPullRequest
-        }
+        guard parts.count == 4, parts[2] == "pull", let number = Int(parts[3]) else { throw GitHubRepositoryError.invalidPullRequest }
         let repositoryPath = "\(parts[0])/\(parts[1])"
         let expectedPath = try validatedPath(expectedRepository)
-        guard repositoryPath.caseInsensitiveCompare(expectedPath) == .orderedSame else {
-            throw GitHubRepositoryError.invalidPullRequest
-        }
-
+        guard repositoryPath.caseInsensitiveCompare(expectedPath) == .orderedSame else { throw GitHubRepositoryError.invalidPullRequest }
         let prURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/pulls/\(number)")!
         let pullRequest: GitHubPullRequestSnapshot = try await request(prURL)
         guard pullRequest.merged else { throw GitHubRepositoryError.pullRequestNotMerged }
-
         let checksBaseURL = "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/check-runs"
         var allCheckRuns: [GitHubCheckRunsResponse.CheckRun] = []
         var expectedCheckCount: Int?
         var page = 1
         repeat {
-            guard let checksURL = URL(string: "\(checksBaseURL)?per_page=100&page=\(page)") else {
-                throw GitHubRepositoryError.requestFailed
-            }
+            guard let checksURL = URL(string: "\(checksBaseURL)?per_page=100&page=\(page)") else { throw GitHubRepositoryError.requestFailed }
             let checks: GitHubCheckRunsResponse = try await request(checksURL)
             expectedCheckCount = checks.totalCount
             allCheckRuns.append(contentsOf: checks.checkRuns)
             page += 1
         } while allCheckRuns.count < (expectedCheckCount ?? 0)
-
         guard allCheckRuns.count == expectedCheckCount,
               allCheckRuns.allSatisfy({ $0.status == "completed" && $0.conclusion == "success" }) else {
             throw GitHubRepositoryError.checksNotSuccessful
         }
         let statusURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/status")!
         let combinedStatus: GitHubCombinedStatus = try await request(statusURL)
-        // Repositories may use legacy commit statuses instead of Check Runs.
-        // Accept either successful source, but never a commit with no checks at all.
-        guard !allCheckRuns.isEmpty || combinedStatus.totalCount > 0 else {
-            throw GitHubRepositoryError.checksNotSuccessful
-        }
-        if combinedStatus.totalCount > 0 && combinedStatus.state != "success" {
-            throw GitHubRepositoryError.checksNotSuccessful
-        }
+        guard !allCheckRuns.isEmpty || combinedStatus.totalCount > 0 else { throw GitHubRepositoryError.checksNotSuccessful }
+        if combinedStatus.totalCount > 0 && combinedStatus.state != "success" { throw GitHubRepositoryError.checksNotSuccessful }
         let workflowURL = allCheckRuns.compactMap { $0.htmlURL }.first ?? pullRequest.htmlURL
         return GitHubPullRequestVerification(pullRequestURL: pullRequest.htmlURL, commitSHA: pullRequest.head.sha, workflowURL: workflowURL)
     }
 
     func fetchSnapshot(repository: String) async throws -> (GitHubRepositorySnapshot, GitHubCommitSnapshot?) {
         let path = try validatedPath(repository)
-
-        if let cached = await GitHubRepositoryCache.shared.value(for: path) {
-            return (cached.snapshot, cached.latestCommit)
-        }
-
+        if let cached = await GitHubRepositoryCache.shared.value(for: path) { return (cached.snapshot, cached.latestCommit) }
         let repoURL = URL(string: "https://api.github.com/repos/\(path)")!
         let snapshot: GitHubRepositorySnapshot = try await request(repoURL)
-
         let commitsURL = URL(string: "https://api.github.com/repos/\(path)/commits?per_page=1")!
         let commits: [GitHubCommitSnapshot]? = try? await request(commitsURL)
         let result = CachedGitHubRepository(snapshot: snapshot, latestCommit: commits?.first)
@@ -294,24 +232,30 @@ struct GitHubRepositoryService {
         return (result.snapshot, result.latestCommit)
     }
 
+    func fetchRecentCommits(repository: String, limit: Int = 10) async throws -> [GitHubCommitSnapshot] {
+        let path = try validatedPath(repository)
+        let url = URL(string: "https://api.github.com/repos/\(path)/commits?per_page=\(min(max(limit, 1), 30))")!
+        return try await request(url)
+    }
 
     func fetchOpenWorkItems(repository: String) async throws -> [GitHubOpenWorkItem] {
         let path = try validatedPath(repository)
-        if let cached = await GitHubRepositoryCache.shared.workItemsValue(for: path) {
-            return cached
-        }
-        let url = URL(string: "https://api.github.com/repos/\(path)/issues?state=open&sort=updated&direction=desc&per_page=4")!
-        let items: [GitHubOpenWorkItem] = try await request(url)
+        if let cached = await GitHubRepositoryCache.shared.workItemsValue(for: path) { return cached }
+        var components = URLComponents(string: "https://api.github.com/repos/\(path)/issues")!
+        components.queryItems = [
+            URLQueryItem(name: "state", value: "open"),
+            URLQueryItem(name: "sort", value: "updated"),
+            URLQueryItem(name: "direction", value: "desc"),
+            URLQueryItem(name: "per_page", value: "30")
+        ]
+        let items: [GitHubOpenWorkItem] = try await request(components.url!)
         await GitHubRepositoryCache.shared.storeWorkItems(items, for: path)
         return items
     }
 
     func fetchLatestWorkflowRun(repository: String) async throws -> GitHubWorkflowRunSnapshot? {
         let path = try validatedPath(repository)
-        if let cached = await GitHubRepositoryCache.shared.workflowValue(for: path) {
-            return cached
-        }
-
+        if let cached = await GitHubRepositoryCache.shared.workflowValue(for: path) { return cached }
         let url = URL(string: "https://api.github.com/repos/\(path)/actions/runs?per_page=1")!
         let response: WorkflowRunsResponse = try await request(url)
         let latest = response.workflowRuns.first
@@ -321,9 +265,7 @@ struct GitHubRepositoryService {
 
     private struct WorkflowRunsResponse: Decodable {
         let workflowRuns: [GitHubWorkflowRunSnapshot]
-        enum CodingKeys: String, CodingKey {
-            case workflowRuns = "workflow_runs"
-        }
+        enum CodingKeys: String, CodingKey { case workflowRuns = "workflow_runs" }
     }
 
     private func validatedPath(_ repository: String) throws -> String {
@@ -352,18 +294,19 @@ struct GitHubRepositoryService {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("DEVHUB-iOS", forHTTPHeaderField: "User-Agent")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        request.timeoutInterval = 15
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let response = response as? HTTPURLResponse else {
-            throw GitHubRepositoryError.requestFailed
+        if let token = GitHubTokenStore.read(), !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        request.timeoutInterval = 15
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let response = response as? HTTPURLResponse else { throw GitHubRepositoryError.requestFailed }
         switch response.statusCode {
         case 200...299:
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(T.self, from: data)
-        case 403, 429: throw GitHubRepositoryError.rateLimited
+        case 401: throw GitHubRepositoryError.unauthorized
+        case 403, 429: throw GitHubRepositoryError.forbidden
         case 404: throw GitHubRepositoryError.notFound
         default: throw GitHubRepositoryError.requestFailed
         }

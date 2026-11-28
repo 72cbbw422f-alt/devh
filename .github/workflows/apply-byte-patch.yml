@@ -1,5 +1,5 @@
 name: DEVHUB Apply Approved Patch
-run-name: ${{ inputs.task_title }}
+run-name: ${{ inputs.request_id }} · ${{ inputs.task_title }}
 
 on:
   workflow_dispatch:
@@ -21,6 +21,10 @@ on:
         type: string
       patch:
         description: Exact unified diff approved in DEVHUB
+        required: true
+        type: string
+      request_id:
+        description: Unique DEVHUB approval identifier
         required: true
         type: string
       task_title:

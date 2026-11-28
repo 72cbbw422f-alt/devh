@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 private struct GitHubActivityItem: Identifiable {
     let id: String
@@ -15,6 +16,7 @@ private struct GitHubActivityItem: Identifiable {
     let workflowSucceeded: Bool?
     let openWorkItems: [GitHubOpenWorkItem]
     let dataWarnings: [String]
+    let recentCommits: [GitHubCommitSnapshot]
 }
 
 struct GitHubActivityFeedView: View {
@@ -151,11 +153,49 @@ struct GitHubActivityFeedView: View {
                         .lineLimit(1)
                 }
                 repositoryLinks(item)
+                commitHistorySection(item.recentCommits)
                 openWorkSection(item.openWorkItems)
                 dataWarningSection(item.dataWarnings)
             }
         }
         .padding(.vertical, 12)
+    }
+
+
+    @ViewBuilder
+    private func commitHistorySection(_ commits: [GitHubCommitSnapshot]) -> some View {
+        if !commits.isEmpty {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("SENASTE ÄNDRINGAR")
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundStyle(StudioTheme.muted)
+                ForEach(commits.prefix(5)) { commit in
+                    Link(destination: commit.htmlURL) {
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.system(size: 9, weight: .semibold))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(commit.commit.message.components(separatedBy: .newlines).first ?? "Commit")
+                                    .lineLimit(1)
+                                if let author = commit.commit.author?.name {
+                                    Text(author).font(.system(size: 8)).foregroundStyle(StudioTheme.muted)
+                                }
+                            }
+                            Spacer(minLength: 4)
+                            if let date = commit.commit.author?.date {
+                                Text(date, style: .relative)
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(StudioTheme.muted)
+                            }
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(StudioTheme.secondaryText)
+                    }
+                }
+            }
+            .padding(.top, 5)
+        }
     }
 
     private func projectHeader(_ item: GitHubActivityItem) -> some View {
@@ -300,8 +340,10 @@ struct GitHubActivityFeedView: View {
                 async let snapshotRequest = service.fetchSnapshot(repository: project.repository)
                 async let workflowRequest = service.fetchLatestWorkflowRun(repository: project.repository)
                 async let workItemsRequest = service.fetchOpenWorkItems(repository: project.repository)
+                async let commitsRequest = service.fetchRecentCommits(repository: project.repository, limit: 8)
 
                 let result = try await snapshotRequest
+                let recentCommits = (try? await commitsRequest) ?? []
                 var warnings: [String] = []
                 let workflow: GitHubWorkflowRunSnapshot?
                 do {
@@ -360,7 +402,8 @@ struct GitHubActivityFeedView: View {
                     workflowURL: workflow?.htmlURL,
                     workflowSucceeded: workflow == nil ? nil : workflowSucceeded,
                     openWorkItems: openWorkItems,
-                    dataWarnings: warnings
+                    dataWarnings: warnings,
+                    recentCommits: recentCommits
                 )
                 latest.append(activity)
             } catch {
@@ -419,6 +462,18 @@ struct GitHubActivityFeedView: View {
         }
         guard !existingNotifications.contains(where: { $0.sourceKey == sourceKey }) else { return }
         modelContext.insert(notification)
+        do {
+            try modelContext.save()
+        } catch {
+            // SwiftData autosave can retry; do not interrupt activity refresh.
+        }
+        Task {
+            await DEVHUBLocalNotifications.shared.deliverIfAuthorized(
+                title: notification.title,
+                body: notification.message,
+                identifier: notification.sourceKey ?? UUID().uuidString
+            )
+        }
     }
 
 }

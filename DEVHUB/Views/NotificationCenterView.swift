@@ -25,6 +25,8 @@ struct NotificationCenterView: View {
                     }
                 }
 
+                NotificationPermissionCard()
+
                 if notifications.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "bell.badge").font(.system(size: 34)).foregroundStyle(StudioTheme.accent)

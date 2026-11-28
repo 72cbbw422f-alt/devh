@@ -10,6 +10,7 @@ enum StudioTab: String, CaseIterable, Identifiable, Hashable {
     case revenue = "Ekonomi"
     case analytics = "Analys"
     case notifications = "Notiser"
+    case more = "Mer"
 
     var id: String { rawValue }
 
@@ -23,6 +24,7 @@ enum StudioTab: String, CaseIterable, Identifiable, Hashable {
         case .revenue: "chart.line.uptrend.xyaxis"
         case .analytics: "chart.bar"
         case .notifications: "bell"
+        case .more: "ellipsis"
         }
     }
 }
@@ -36,6 +38,7 @@ struct ContentView: View {
     @State private var selection: StudioTab = .overview
     @State private var selectedProject: StudioProject?
     @State private var showingAddProject = false
+    @State private var moreSelection: StudioTab?
 
     private var projects: [StudioProject] {
         storedProjects.filter { !$0.isArchived }.map { record in
@@ -142,8 +145,9 @@ struct ContentView: View {
     }
 
     private var iPhoneLayout: some View {
-        TabView(selection: $selection) {
-            ForEach(StudioTab.allCases) { tab in
+        let primaryTabs: [StudioTab] = [.overview, .projects, .assistant, .activity, .more]
+        return TabView(selection: $selection) {
+            ForEach(primaryTabs) { tab in
                 NavigationStack {
                     tabContent(for: tab)
                         .navigationDestination(item: $selectedProject) {
@@ -187,6 +191,38 @@ struct ContentView: View {
             AnalyticsView()
         case .notifications:
             NotificationCenterView()
+        case .more:
+            Group {
+                if let destination = moreSelection {
+                    moreDestinationContent(for: destination)
+                        .navigationTitle(destination.rawValue)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button { moreSelection = nil } label: {
+                                    Label("Mer", systemImage: "chevron.left")
+                                }
+                            }
+                        }
+                } else {
+                    MoreMenuView(onSelect: { destination in moreSelection = destination })
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func moreDestinationContent(for tab: StudioTab) -> some View {
+        switch tab {
+        case .roadmap:
+            RoadmapView(projects: projects) { selectedProject = $0 }
+        case .notifications:
+            NotificationCenterView()
+        case .revenue:
+            OpenAIEconomyView()
+        case .analytics:
+            AnalyticsView()
+        default:
+            MoreMenuView(onSelect: { moreSelection = $0 })
         }
     }
 
@@ -254,5 +290,49 @@ struct ContentView: View {
         case "hemma": ["Bygg appskal och rum", "Verifiera HomeKit-anslutning", "Visa tillbehör och scener", "Testa automationer"]
         default: ["Färdigställ projektöversikt och AI", "Verifiera GitHub-arbetsflöde", "Bygg milstolpar och uppgifter", "Verifiera byggstatus och distribution"]
         }
+    }
+}
+
+
+private struct MoreMenuView: View {
+    let onSelect: (StudioTab) -> Void
+    private let destinations: [StudioTab] = [.roadmap, .notifications, .revenue, .analytics]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Fler verktyg")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(StudioTheme.text)
+                    .padding(.bottom, 8)
+                ForEach(destinations) { destination in
+                    Button { onSelect(destination) } label: {
+                        HStack(spacing: 13) {
+                            Image(systemName: destination.symbol)
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(StudioTheme.accent)
+                                .frame(width: 42, height: 42)
+                                .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 12))
+                            Text(destination.rawValue)
+                                .font(.headline)
+                                .foregroundStyle(StudioTheme.text)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(StudioTheme.muted)
+                        }
+                        .padding(13)
+                        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(StudioTheme.border, lineWidth: 1))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding()
+        }
+        .background(StudioTheme.background.ignoresSafeArea())
+        .navigationTitle("Mer")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

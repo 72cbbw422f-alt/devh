@@ -5,6 +5,7 @@ import SwiftData
 final class ByteWorkItem {
     @Attribute(.unique) var id: String
     var projectRepository: String
+    var dispatchRequestID: String = ""
     var title: String
     var statusRawValue: String
     var createdAt: Date
@@ -16,6 +17,7 @@ final class ByteWorkItem {
     var workModeRawValue: String = "approval"
     var conversationResponseID: String?
     var inputTokens: Int = 0
+    var cachedInputTokens: Int = 0
     var outputTokens: Int = 0
     var costUSD: Double = 0
     var patchPreview: String?
@@ -25,8 +27,10 @@ final class ByteWorkItem {
     var patchWorkflowURL: String?
     var patchPullRequestURL: String?
     var patchDispatchedAt: Date?
+    var patchDispatchRequestID: String?
     var patchFailureDetails: String?
     var workflowFailureDetails: String?
+    var analysisRecoveryDetails: String?
 
     var workModeLabel: String {
         switch workModeRawValue {
@@ -49,6 +53,7 @@ final class ByteWorkItem {
     init(projectRepository: String, title: String, workMode: String = "approval") {
         id = UUID().uuidString
         self.projectRepository = projectRepository
+        dispatchRequestID = UUID().uuidString
         self.title = title
         statusRawValue = "queued"
         createdAt = .now
@@ -67,5 +72,6 @@ final class ByteWorkItem {
         patchDispatchedAt = nil
         patchFailureDetails = nil
         workflowFailureDetails = nil
+        analysisRecoveryDetails = nil
     }
 }
