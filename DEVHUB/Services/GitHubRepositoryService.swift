@@ -259,13 +259,17 @@ struct GitHubRepositoryService {
             page += 1
         } while allCheckRuns.count < (expectedCheckCount ?? 0)
 
-        guard !allCheckRuns.isEmpty,
-              allCheckRuns.count == expectedCheckCount,
+        guard allCheckRuns.count == expectedCheckCount,
               allCheckRuns.allSatisfy({ $0.status == "completed" && $0.conclusion == "success" }) else {
             throw GitHubRepositoryError.checksNotSuccessful
         }
         let statusURL = URL(string: "https://api.github.com/repos/\(repositoryPath)/commits/\(pullRequest.head.sha)/status")!
         let combinedStatus: GitHubCombinedStatus = try await request(statusURL)
+        // Repositories may use legacy commit statuses instead of Check Runs.
+        // Accept either successful source, but never a commit with no checks at all.
+        guard !allCheckRuns.isEmpty || combinedStatus.totalCount > 0 else {
+            throw GitHubRepositoryError.checksNotSuccessful
+        }
         if combinedStatus.totalCount > 0 && combinedStatus.state != "success" {
             throw GitHubRepositoryError.checksNotSuccessful
         }
