@@ -1251,8 +1251,9 @@ struct AssistantView: View {
         }
         guard item.patchStatusRawValue != "dispatching" && item.patchStatusRawValue != "dispatched" else { return }
         let previousPatchStatus = item.patchStatusRawValue
+        let patchRequestID = UUID().uuidString
         item.patchStatusRawValue = "dispatching"
-        item.patchDispatchRequestID = UUID().uuidString
+        item.patchDispatchRequestID = patchRequestID
         item.patchWorkflowRunID = nil
         item.patchWorkflowURL = nil
         item.patchPullRequestURL = nil
@@ -1272,14 +1273,14 @@ struct AssistantView: View {
         Task {
             var dispatchAccepted = false
             do {
-                try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, requestID: item.patchDispatchRequestID ?? UUID().uuidString, token: token)
+                try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, requestID: patchRequestID, token: token)
                 dispatchAccepted = true
                 await MainActor.run {
                     item.patchStatusRawValue = "dispatched"
                     item.updatedAt = .now
                     statusMessage = "GitHub har tagit emot godkännandet. Väntar på att arbetsflödet startar…"
                 }
-                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), requestID: item.patchDispatchRequestID ?? "", token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), requestID: patchRequestID, token: token) { runID, runURL in
                     await MainActor.run {
                         item.patchWorkflowRunID = runID
                         item.patchWorkflowURL = runURL?.absoluteString
@@ -1391,10 +1392,16 @@ struct AssistantView: View {
                     }
                     return
                 }
+                guard let requestID = item.patchDispatchRequestID, !requestID.isEmpty else {
+                    await MainActor.run {
+                        statusMessage = "Det sparade godkännandet saknar sitt unika ID. Ingen ny körning skickas automatiskt."
+                    }
+                    return
+                }
                 let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(
                     startedAt: startedAt,
                     expectedTitle: String(item.title.prefix(120)),
-                    requestID: item.patchDispatchRequestID ?? "",
+                    requestID: requestID,
                     token: token
                 ) { runID, runURL in
                     await MainActor.run {
