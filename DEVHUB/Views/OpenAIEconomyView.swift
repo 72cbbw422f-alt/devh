@@ -6,7 +6,10 @@ struct OpenAIEconomyView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var lastFetchAt: Date?
+    @State private var budgetNotificationsEnabled = false
     @AppStorage("openAI.monthlyBudgetUSD") private var monthlyBudgetUSD = 25.0
+    @AppStorage("openAI.budgetAlertMonth") private var budgetAlertMonth = ""
+    @AppStorage("openAI.budgetAlertLevel") private var budgetAlertLevel = 0
 
     private let billingURL = URL(string: "https://platform.openai.com/settings/organization/billing/overview")!
 
@@ -174,7 +177,16 @@ struct OpenAIEconomyView: View {
                 thresholdMarker("90 %", color: .orange)
                 thresholdMarker("100 %", color: .red)
             }
-            Text("Budgetnivåerna markeras vid 75, 90 och 100 %. Budgeten är ett lokalt planeringsmål – den stoppar inte API-anrop.")
+            Button {
+                Task { await enableBudgetNotifications() }
+            } label: {
+                Label(budgetNotificationsEnabled ? "Budgetnotiser aktiverade" : "Aktivera budgetnotiser",
+                      systemImage: budgetNotificationsEnabled ? "bell.badge.fill" : "bell.badge")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(StudioTheme.accent)
+            }
+            .buttonStyle(.plain)
+            Text("Notiser skickas en gång per nivå och månad vid 75, 90 och 100 %. Kräver att iOS tillåter notiser. Budgeten stoppar inte API-anrop.")
                 .font(.caption2).foregroundStyle(StudioTheme.muted)
         }
     }
@@ -325,6 +337,54 @@ struct OpenAIEconomyView: View {
     }
 
     @MainActor
+    private func enableBudgetNotifications() async {
+        do {
+            budgetNotificationsEnabled = try await DEVHUBLocalNotifications.shared.requestPermission()
+            if budgetNotificationsEnabled, let snapshot {
+                await checkBudgetNotification(for: snapshot)
+            }
+        } catch {
+            budgetNotificationsEnabled = false
+            errorMessage = "Kunde inte aktivera budgetnotiser. Kontrollera notisinställningarna i iOS."
+        }
+    }
+
+    @MainActor
+    private func checkBudgetNotification(for snapshot: OpenAICostSnapshot) async {
+        guard budgetNotificationsEnabled else { return }
+        let month = String(snapshot.monthStart.prefix(7))
+        if budgetAlertMonth != month {
+            budgetAlertMonth = month
+            budgetAlertLevel = 0
+        }
+
+        let percentage = snapshot.monthToDateUSD / max(monthlyBudgetUSD, 0.01)
+        let level = percentage >= 1 ? 100 : percentage >= 0.9 ? 90 : percentage >= 0.75 ? 75 : 0
+        guard level > budgetAlertLevel else { return }
+
+        let title: String
+        let body: String
+        switch level {
+        case 100:
+            title = "AI-budgeten är uppnådd"
+            body = "OpenAI API-förbrukningen har nått eller passerat din månadsbudget."
+        case 90:
+            title = "90 % av AI-budgeten använd"
+            body = "Du närmar dig månadsbudgeten för OpenAI API."
+        default:
+            title = "75 % av AI-budgeten använd"
+            body = "Håll koll på OpenAI API-förbrukningen den här månaden."
+        }
+
+        await DEVHUBLocalNotifications.shared.deliverIfAuthorized(
+            title: title,
+            body: body,
+            identifier: "devhub-ai-budget-\(month)-\(level)"
+        )
+        budgetAlertLevel = level
+    }
+
+    @MainActor
     private func loadSnapshot() async {
         guard !isLoading else { return }
         guard let token = GitHubTokenStore.read() else {
@@ -347,9 +407,13 @@ struct OpenAIEconomyView: View {
             let file = try JSONDecoder().decode(GitHubContent.self, from: data)
             let encoded = file.content.replacingOccurrences(of: "\n", with: "")
             guard let jsonData = Data(base64Encoded: encoded) else { throw URLError(.cannotDecodeContentData) }
-            snapshot = try JSONDecoder().decode(OpenAICostSnapshot.self, from: jsonData)
+            let loadedSnapshot = try JSONDecoder().decode(OpenAICostSnapshot.self, from: jsonData)
+            snapshot = loadedSnapshot
             lastFetchAt = .now
             errorMessage = nil
+            let status = await DEVHUBLocalNotifications.shared.authorizationStatus()
+            budgetNotificationsEnabled = status == .authorized
+            await checkBudgetNotification(for: loadedSnapshot)
         } catch {
             errorMessage = "Kunde inte läsa kostnadsrapporten. Kontrollera GitHub-tokenens behörighet och att rapporten har körts."
         }
