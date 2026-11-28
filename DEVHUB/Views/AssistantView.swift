@@ -882,6 +882,7 @@ struct AssistantView: View {
                     if resolvedRunID == nil {
                         let recoveredRun = try await GitHubWorkflowClient.findRun(
                             task: item.title,
+                            requestID: item.dispatchRequestID,
                             startedAt: item.createdAt,
                             token: token
                         )
@@ -1538,7 +1539,7 @@ struct AssistantView: View {
         Task {
             var dispatchAccepted = false
             do {
-                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: submissionMode, previousResponseID: previousResponseID, token: token)
+                try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, requestID: queueItem.dispatchRequestID, workMode: submissionMode, previousResponseID: previousResponseID, token: token)
                 dispatchAccepted = true
                 await MainActor.run {
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
@@ -1550,7 +1551,7 @@ struct AssistantView: View {
                     continuingFromResponseID = nil
                     continuingFromTitle = nil
                 }
-                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, expectedTask: prompt, token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForRun(startedAt: startedAt, expectedTask: prompt, requestID: queueItem.dispatchRequestID, token: token) { runID, runURL in
                     await MainActor.run {
                         if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                             item.workflowRunID = runID
@@ -1741,7 +1742,7 @@ private enum GitHubWorkflowClient {
             : failures.joined(separator: "\n")
     }
 
-    static func findRun(task: String, startedAt: Date, token: String) async throws -> RunResult? {
+    static func findRun(task: String, requestID: String, startedAt: Date, token: String) async throws -> RunResult? {
         let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/runs?per_page=20")!
         var request = URLRequest(url: endpoint)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -1755,7 +1756,7 @@ private enum GitHubWorkflowClient {
         let formatter = ISO8601DateFormatter()
         guard let run = runs.first(where: {
             $0.event == "workflow_dispatch" &&
-            $0.display_title == task &&
+            $0.display_title == "\(requestID) · \(task)" &&
             (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-30)
         }) else { return nil }
         return RunResult(
@@ -1782,6 +1783,7 @@ private enum GitHubWorkflowClient {
     static func waitForRun(
         startedAt: Date,
         expectedTask: String,
+        requestID: String,
         token: String,
         onRunFound: @escaping (Int, URL?) async -> Void
     ) async throws -> RunResult {
@@ -1799,7 +1801,7 @@ private enum GitHubWorkflowClient {
             if matchedRun == nil {
                 matchedRun = runs.first(where: {
                     $0.event == "workflow_dispatch" &&
-                    $0.display_title == expectedTask &&
+                    $0.display_title == "\(requestID) · \(expectedTask)" &&
                     (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
                 })
                 if let run = matchedRun {
@@ -1967,7 +1969,7 @@ private enum GitHubWorkflowClient {
             throw WorkflowError.http(http.statusCode, detail)
         }
     }
-    static func dispatch(repository: String, task: String, workMode: String, previousResponseID: String?, token: String) async throws {
+    static func dispatch(repository: String, task: String, requestID: String, workMode: String, previousResponseID: String?, token: String) async throws {
         let url = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/dispatches")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -1977,7 +1979,7 @@ private enum GitHubWorkflowClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "ref": "main",
-            "inputs": ["project_repository": repository, "task": task, "work_mode": workMode, "previous_response_id": previousResponseID ?? ""]
+            "inputs": ["project_repository": repository, "task": task, "request_id": requestID, "work_mode": workMode, "previous_response_id": previousResponseID ?? ""]
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }
