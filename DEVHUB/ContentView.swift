@@ -194,7 +194,7 @@ struct ContentView: View {
         case .more:
             Group {
                 if let destination = moreSelection {
-                    tabContent(for: destination)
+                    moreDestinationContent(for: destination)
                         .navigationTitle(destination.rawValue)
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) {
@@ -320,3 +320,20 @@ private struct MoreMenuView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+
+    @ViewBuilder
+    private func moreDestinationContent(for tab: StudioTab) -> some View {
+        switch tab {
+        case .roadmap:
+            RoadmapView(projects: projects) { selectedProject = $0 }
+        case .notifications:
+            NotificationCenterView()
+        case .revenue:
+            OpenAIEconomyView()
+        case .analytics:
+            AnalyticsView()
+        default:
+            MoreMenuView(onSelect: { moreSelection = $0 })
+        }
+    }
