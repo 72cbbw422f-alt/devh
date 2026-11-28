@@ -130,6 +130,8 @@ enum GitHubRepositoryError: LocalizedError {
     case notFound
     case rateLimited
     case requestFailed
+    case forbidden
+    case unauthorized
     case pullRequestNotMerged
     case checksNotSuccessful
     case invalidPullRequest
@@ -139,7 +141,9 @@ enum GitHubRepositoryError: LocalizedError {
         case .invalidRepository: "Ange en giltig GitHub-adress i projektinställningarna."
         case .notFound: "Repositoryt kunde inte hittas eller är privat."
         case .rateLimited: "GitHub har tillfälligt begränsat antalet förfrågningar. Försök igen senare."
-        case .requestFailed: "Kunde inte hämta information från GitHub."
+        case .requestFailed: "GitHub svarade med ett oväntat fel. Försök igen."
+        case .forbidden: "GitHub nekade åtkomst eller API-gränsen har nåtts. Kontrollera tokenens behörigheter och försök igen senare."
+        case .unauthorized: "GitHub-tokenen är ogiltig eller har gått ut. Lägg in tokenen igen i DEVHUB."
         case .pullRequestNotMerged: "Pull requesten är inte mergad ännu."
         case .checksNotSuccessful: "Alla GitHub-kontroller måste vara klara och godkända innan uppgiften kan verifieras."
         case .invalidPullRequest: "Ange en giltig GitHub PR-länk till projektets repository."
@@ -300,8 +304,14 @@ struct GitHubRepositoryService {
         if let cached = await GitHubRepositoryCache.shared.workItemsValue(for: path) {
             return cached
         }
-        let url = URL(string: "https://api.github.com/repos/\(path)/issues?state=open&sort=updated&direction=desc&per_page=4")!
-        let items: [GitHubOpenWorkItem] = try await request(url)
+        var components = URLComponents(string: "https://api.github.com/repos/\(path)/issues")!
+        components.queryItems = [
+            URLQueryItem(name: "state", value: "open"),
+            URLQueryItem(name: "sort", value: "updated"),
+            URLQueryItem(name: "direction", value: "desc"),
+            URLQueryItem(name: "per_page", value: "30")
+        ]
+        let items: [GitHubOpenWorkItem] = try await request(components.url!)
         await GitHubRepositoryCache.shared.storeWorkItems(items, for: path)
         return items
     }
@@ -352,6 +362,9 @@ struct GitHubRepositoryService {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("DEVHUB-iOS", forHTTPHeaderField: "User-Agent")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        if let token = GitHubTokenStore.read(), !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.timeoutInterval = 15
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -363,7 +376,8 @@ struct GitHubRepositoryService {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(T.self, from: data)
-        case 403, 429: throw GitHubRepositoryError.rateLimited
+        case 401: throw GitHubRepositoryError.unauthorized
+        case 403, 429: throw GitHubRepositoryError.forbidden
         case 404: throw GitHubRepositoryError.notFound
         default: throw GitHubRepositoryError.requestFailed
         }

@@ -308,14 +308,14 @@ struct GitHubActivityFeedView: View {
                     workflow = try await workflowRequest
                 } catch {
                     workflow = nil
-                    warnings.append("Actions kunde inte hämtas")
+                    warnings.append("Actions: \(error.localizedDescription)")
                 }
                 let openWorkItems: [GitHubOpenWorkItem]
                 do {
                     openWorkItems = try await workItemsRequest
                 } catch {
                     openWorkItems = []
-                    warnings.append("Issues/PR kunde inte hämtas")
+                    warnings.append("Ärenden/PR: \(error.localizedDescription)")
                 }
                 if let workflow, workflow.status == "completed" {
                     observedEventKeys.insert("workflow|\(project.repository)|\(workflow.id)|\(workflow.conclusion ?? "unknown")")
