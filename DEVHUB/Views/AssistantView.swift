@@ -355,10 +355,9 @@ struct AssistantView: View {
                 }
                 .disabled(isRefreshingQueue || (
                     !byteWorkItems.contains(where: {
-                        guard let runID = $0.workflowRunID else { return false }
-                        return $0.statusRawValue == "running" ||
-                            ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
-                            ($0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
+                        $0.statusRawValue == "running" ||
+                            ($0.workflowRunID != nil && $0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
+                            ($0.workflowRunID != nil && $0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
                     }) &&
                     !byteWorkItems.contains(where: { $0.patchStatusRawValue == "dispatching" || $0.patchStatusRawValue == "dispatched" || $0.patchStatusRawValue == "running" })
                 ))
@@ -1843,31 +1842,55 @@ private enum GitHubWorkflowClient {
 
     static func fetchAnalysis(runID: Int, token: String) async throws -> String {
         let api = "https://api.github.com/repos/72cbbw422f-alt/devh/actions/runs/\(runID)/artifacts"
-        var request = URLRequest(url: URL(string: api)!)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        let (metadata, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw WorkflowError.artifactUnavailable }
-        let artifacts = try JSONDecoder().decode(ArtifactsResponse.self, from: metadata).artifacts
-        guard let artifact = artifacts.first(where: { $0.name == "devhub-ai-result" }) else { throw WorkflowError.artifactUnavailable }
+        var lastError: Error = WorkflowError.artifactUnavailable
 
-        let downloadURL = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/artifacts/\(artifact.id)/zip")!
-        var downloadRequest = URLRequest(url: downloadURL)
-        downloadRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        downloadRequest.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        let (archiveData, downloadResponse) = try await URLSession.shared.data(for: downloadRequest)
-        guard let downloadHTTP = downloadResponse as? HTTPURLResponse, downloadHTTP.statusCode == 200 else { throw WorkflowError.artifactUnavailable }
+        // GitHub may report a completed run a few seconds before its artifact is ready.
+        // Retry briefly so a successful run is not mistaken for a missing result.
+        for attempt in 0..<4 {
+            do {
+                var request = URLRequest(url: URL(string: api)!)
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+                let (metadata, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                    throw WorkflowError.artifactUnavailable
+                }
+                let artifacts = try JSONDecoder().decode(ArtifactsResponse.self, from: metadata).artifacts
+                guard let artifact = artifacts.first(where: { $0.name == "devhub-ai-result" }) else {
+                    throw WorkflowError.artifactUnavailable
+                }
 
-        let archiveURL = FileManager.default.temporaryDirectory.appendingPathComponent("devhub-ai-\(runID).zip")
-        try archiveData.write(to: archiveURL, options: .atomic)
-        defer { try? FileManager.default.removeItem(at: archiveURL) }
-        guard let archive = Archive(url: archiveURL, accessMode: .read),
-              let entry = archive["analysis.md"] else { throw WorkflowError.artifactUnreadable }
-        var output = Data()
-        _ = try archive.extract(entry) { output.append($0) }
-        guard let result = String(data: output, encoding: .utf8), !result.isEmpty else { throw WorkflowError.artifactUnreadable }
-        return result
+                let downloadURL = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/artifacts/\(artifact.id)/zip")!
+                var downloadRequest = URLRequest(url: downloadURL)
+                downloadRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                downloadRequest.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                let (archiveData, downloadResponse) = try await URLSession.shared.data(for: downloadRequest)
+                guard let downloadHTTP = downloadResponse as? HTTPURLResponse, downloadHTTP.statusCode == 200 else {
+                    throw WorkflowError.artifactUnavailable
+                }
+
+                let archiveURL = FileManager.default.temporaryDirectory.appendingPathComponent("devhub-ai-\(runID).zip")
+                try archiveData.write(to: archiveURL, options: .atomic)
+                defer { try? FileManager.default.removeItem(at: archiveURL) }
+                guard let archive = Archive(url: archiveURL, accessMode: .read),
+                      let entry = archive["analysis.md"] else {
+                    throw WorkflowError.artifactUnreadable
+                }
+                var output = Data()
+                _ = try archive.extract(entry) { output.append($0) }
+                guard let result = String(data: output, encoding: .utf8), !result.isEmpty else {
+                    throw WorkflowError.artifactUnreadable
+                }
+                return result
+            } catch {
+                lastError = error
+                if attempt < 3 {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
+            }
+        }
+        throw lastError
     }
 
     static func dispatchApprovedPatch(repository: String, baseSHA: String, patch: String, title: String, token: String) async throws {
