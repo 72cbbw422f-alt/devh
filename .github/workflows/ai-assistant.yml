@@ -1,5 +1,5 @@
 name: DEVHUB AI Assistant
-run-name: ${{ inputs.task }}
+run-name: ${{ inputs.request_id }} · ${{ inputs.task }}
 
 on:
   workflow_dispatch:
@@ -15,6 +15,10 @@ on:
           - 72cbbw422f-alt/vill
           - 72cbbw422f-alt/hem
           - 72cbbw422f-alt/devh
+      request_id:
+        description: Unique DEVHUB dispatch identifier
+        required: true
+        type: string
       task:
         description: What should the assistant investigate?
         required: true
