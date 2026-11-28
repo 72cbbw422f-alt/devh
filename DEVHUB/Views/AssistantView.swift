@@ -1515,6 +1515,15 @@ struct AssistantView: View {
         let queueItem = ByteWorkItem(projectRepository: selectedRepository, title: prompt, workMode: submissionMode)
         queueItem.conversationResponseID = previousResponseID
         modelContext.insert(queueItem)
+        do {
+            // Persist the local recovery record before dispatching remotely. If the app
+            // closes or the request times out, the queue can still recover the GitHub run.
+            try modelContext.save()
+        } catch {
+            modelContext.delete(queueItem)
+            statusMessage = "Uppdraget skickades inte eftersom DEVHUB inte kunde spara det i arbetskön: \(error.localizedDescription)"
+            return
+        }
         let queueItemID = queueItem.id
         isSending = true
         statusMessage = nil
