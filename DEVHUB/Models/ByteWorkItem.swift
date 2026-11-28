@@ -5,6 +5,7 @@ import SwiftData
 final class ByteWorkItem {
     @Attribute(.unique) var id: String
     var projectRepository: String
+    var dispatchRequestID: String
     var title: String
     var statusRawValue: String
     var createdAt: Date
@@ -51,6 +52,7 @@ final class ByteWorkItem {
     init(projectRepository: String, title: String, workMode: String = "approval") {
         id = UUID().uuidString
         self.projectRepository = projectRepository
+        dispatchRequestID = UUID().uuidString
         self.title = title
         statusRawValue = "queued"
         createdAt = .now
