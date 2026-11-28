@@ -16,6 +16,7 @@ final class ByteWorkItem {
     var workModeRawValue: String = "approval"
     var conversationResponseID: String?
     var inputTokens: Int = 0
+    var cachedInputTokens: Int = 0
     var outputTokens: Int = 0
     var costUSD: Double = 0
     var patchPreview: String?
