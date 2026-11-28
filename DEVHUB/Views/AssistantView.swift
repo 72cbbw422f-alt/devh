@@ -1978,7 +1978,7 @@ private enum GitHubWorkflowClient {
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "ref": "main",
+            "ref": "fix/project-history-notifications-navigation",
             "inputs": ["project_repository": repository, "task": task, "request_id": requestID, "work_mode": workMode, "previous_response_id": previousResponseID ?? ""]
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
