@@ -15,9 +15,16 @@ struct OpenAIEconomyView: View {
         return min(snapshot.monthToDateUSD / monthlyBudgetUSD, 1)
     }
 
-    private var budgetWarning: Bool {
-        snapshot != nil && monthlyBudgetUSD > 0 && snapshot!.monthToDateUSD >= monthlyBudgetUSD * 0.8
+    private var budgetLevel: Int {
+        guard let snapshot, monthlyBudgetUSD > 0 else { return 0 }
+        let percentage = snapshot.monthToDateUSD / monthlyBudgetUSD
+        if percentage >= 1 { return 100 }
+        if percentage >= 0.9 { return 90 }
+        if percentage >= 0.75 { return 75 }
+        return 0
     }
+
+    private var budgetWarning: Bool { budgetLevel >= 75 }
 
     var body: some View {
         ScrollView {
@@ -138,11 +145,17 @@ struct OpenAIEconomyView: View {
             HStack {
                 Text("\(Int((snapshot.monthToDateUSD / max(monthlyBudgetUSD, 0.01)) * 100))% av budgeten")
                 Spacer()
-                if budgetWarning {
-                    Label("Budgetvarning", systemImage: "exclamationmark.triangle.fill")
+                if budgetLevel == 100 {
+                    Label("Budget uppnådd", systemImage: "exclamationmark.octagon.fill")
+                        .foregroundStyle(.red)
+                } else if budgetLevel == 90 {
+                    Label("90 % · nära taket", systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
+                } else if budgetLevel == 75 {
+                    Label("75 % · håll koll", systemImage: "exclamationmark.circle.fill")
+                        .foregroundStyle(.yellow)
                 } else {
-                    Text("Under budget").foregroundStyle(StudioTheme.accentCyan)
+                    Text("Under 75 %").foregroundStyle(StudioTheme.accentCyan)
                 }
             }
             .font(.caption.weight(.medium)).foregroundStyle(StudioTheme.secondaryText)
@@ -156,8 +169,20 @@ struct OpenAIEconomyView: View {
             }
             Slider(value: $monthlyBudgetUSD, in: 1...500, step: 1)
                 .tint(StudioTheme.accent)
-            Text("Dra reglaget för att ändra månadsbudgeten (1–500 USD). Varning visas vid 80%.")
+            HStack(spacing: 10) {
+                thresholdMarker("75 %", color: .yellow)
+                thresholdMarker("90 %", color: .orange)
+                thresholdMarker("100 %", color: .red)
+            }
+            Text("Budgetnivåerna markeras vid 75, 90 och 100 %. Budgeten är ett lokalt planeringsmål – den stoppar inte API-anrop.")
                 .font(.caption2).foregroundStyle(StudioTheme.muted)
+        }
+    }
+
+    private func thresholdMarker(_ title: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(title).font(.caption2.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
         }
     }
 
