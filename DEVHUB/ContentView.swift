@@ -210,6 +210,22 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private func moreDestinationContent(for tab: StudioTab) -> some View {
+        switch tab {
+        case .roadmap:
+            RoadmapView(projects: projects) { selectedProject = $0 }
+        case .notifications:
+            NotificationCenterView()
+        case .revenue:
+            OpenAIEconomyView()
+        case .analytics:
+            AnalyticsView()
+        default:
+            MoreMenuView(onSelect: { moreSelection = $0 })
+        }
+    }
+
     private func seedProjectsIfNeeded() {
         if storedProjects.isEmpty {
             for project in StudioProject.samples {
@@ -320,20 +336,3 @@ private struct MoreMenuView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-
-
-    @ViewBuilder
-    private func moreDestinationContent(for tab: StudioTab) -> some View {
-        switch tab {
-        case .roadmap:
-            RoadmapView(projects: projects) { selectedProject = $0 }
-        case .notifications:
-            NotificationCenterView()
-        case .revenue:
-            OpenAIEconomyView()
-        case .analytics:
-            AnalyticsView()
-        default:
-            MoreMenuView(onSelect: { moreSelection = $0 })
-        }
-    }
