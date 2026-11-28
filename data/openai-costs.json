@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-11-27T15:15:16.247919+00:00",
+  "updatedAt": "2026-11-28T14:19:24.858783+00:00",
   "monthStart": "2026-11-01",
   "currency": "USD",
-  "monthToDateUSD": 0.17207,
+  "monthToDateUSD": 0.277044,
   "daily": [
     {
       "date": "2026-11-01",
@@ -107,26 +107,30 @@
     {
       "date": "2026-11-26",
       "costUSD": 0.172066
+    },
+    {
+      "date": "2026-11-27",
+      "costUSD": 0.104974
     }
   ],
   "projects": [
     {
       "projectID": "proj_5Su6QOKr6HrdGVX2rVeefCLN",
-      "costUSD": 0.17207
+      "costUSD": 0.277044
     }
   ],
   "lineItems": [
     {
       "name": "gpt-6.2-sol, cache writes",
-      "costUSD": 0.118047
+      "costUSD": 0.2158
     },
     {
       "name": "gpt-6.2-sol, output",
-      "costUSD": 0.054
+      "costUSD": 0.06121
     },
     {
       "name": "gpt-6.2-sol, input",
-      "costUSD": 1.8e-05
+      "costUSD": 3e-05
     },
     {
       "name": "gpt-4o-mini-2024-07-18, input",
