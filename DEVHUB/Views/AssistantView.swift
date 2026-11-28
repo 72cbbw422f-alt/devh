@@ -772,9 +772,17 @@ struct AssistantView: View {
                                     .tint(StudioTheme.accentCyan)
                                 }
                             } else if item.statusRawValue == "completed" {
-                                Text("Analysen är klar. Resultatet hämtas…")
-                                    .font(.caption)
-                                    .foregroundStyle(StudioTheme.muted)
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Label("Körningen är klar – analysen väntar på hämtning", systemImage: "clock.arrow.circlepath")
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(StudioTheme.muted)
+                                    if let recoveryDetails = item.analysisRecoveryDetails {
+                                        Text(recoveryDetails)
+                                            .font(.caption2)
+                                            .foregroundStyle(StudioTheme.secondaryText)
+                                            .textSelection(.enabled)
+                                    }
+                                }
                             }
                             HStack(spacing: 14) {
                                 if let responseID = item.conversationResponseID {
@@ -879,6 +887,9 @@ struct AssistantView: View {
                         )
                         guard let recoveredRun else {
                             notFoundCount += 1
+                            await MainActor.run {
+                                item.analysisRecoveryDetails = "GitHub har ännu inte hittat någon matchande körning. DEVHUB försöker igen automatiskt."
+                            }
                             continue
                         }
                         resolvedRunID = recoveredRun.id
@@ -925,6 +936,7 @@ struct AssistantView: View {
                             applyUsage(from: analysis, to: item)
                             item.taskProposalJSON = extractTaskProposalJSON(from: analysis)
                             item.analysisText = cleanAnalysis(from: analysis, responseID: responseID)
+                            item.analysisRecoveryDetails = nil
                             item.patchPreview = extractPatchPreview(from: analysis)
                             item.baseCommitSHA = extractBaseSHA(from: analysis)
                             item.conversationResponseID = responseID ?? item.conversationResponseID
@@ -940,6 +952,9 @@ struct AssistantView: View {
                 } catch {
                     errorCount += 1
                     recoveryNotes.append("\(item.title): \(error.localizedDescription)")
+                    await MainActor.run {
+                        item.analysisRecoveryDetails = error.localizedDescription
+                    }
                 }
             }
             await MainActor.run {
