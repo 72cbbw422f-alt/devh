@@ -1484,12 +1484,28 @@ struct AssistantView: View {
     }
 
     private func submitTask() {
+        guard !isSending else { return }
         guard let token = GitHubTokenStore.read() else {
             statusMessage = "GitHub-token saknas. Spara den först."
             return
         }
         let prompt = task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
+        let normalizedPrompt = prompt
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .lowercased()
+        if byteWorkItems.contains(where: {
+            $0.projectRepository == selectedRepository &&
+            ($0.statusRawValue == "queued" || $0.statusRawValue == "running") &&
+            $0.title
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                .lowercased() == normalizedPrompt
+        }) {
+            statusMessage = "Ett likadant uppdrag för det här projektet är redan aktivt. Kontrollera arbetskön innan du skickar igen."
+            return
+        }
         focusedField = nil
         analysisRepository = selectedRepository
         // A selected conversation must never silently become a fresh task because
@@ -1598,7 +1614,7 @@ struct AssistantView: View {
                         item.updatedAt = .now
                     }
                     if dispatchAccepted {
-                        statusMessage = "GitHub tog emot uppdraget, men DEVHUB kunde inte bekräfta körningen ännu. Uppdraget ligger kvar som pågående och kontrolleras igen automatiskt. (error.localizedDescription)"
+                        statusMessage = "GitHub tog emot uppdraget, men DEVHUB kunde inte bekräfta körningen ännu. Uppdraget ligger kvar som pågående och kontrolleras igen automatiskt. \(error.localizedDescription)"
                         runStatus = "Statusen är osäker – uppdraget har inte markerats som misslyckat."
                     } else {
                         statusMessage = error.localizedDescription
