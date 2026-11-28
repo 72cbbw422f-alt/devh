@@ -35,7 +35,7 @@ struct AssistantView: View {
     @State private var continuingFromResponseID: String?
     @State private var continuingFromTitle: String?
     @AppStorage("byte.workMode") private var workMode = "approval"
-    @AppStorage("byte.monthlyBudget") private var monthlyBudget = 200.0
+    @AppStorage("openAI.monthlyBudgetUSD") private var monthlyBudgetUSD = 25.0
     @FocusState private var focusedField: AssistantInput?
 
     private enum AssistantInput: Hashable { case token, task, budget }
@@ -204,11 +204,11 @@ struct AssistantView: View {
             Divider().overlay(StudioTheme.border)
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Månatligt AI-budgetmål").font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
-                    Text("Egen planering i kronor · ingen automatisk kostnadsspärr").font(.caption).foregroundStyle(StudioTheme.muted)
+                    Text("Gemensam månadsbudget").font(.subheadline.weight(.semibold)).foregroundStyle(StudioTheme.text)
+                    Text("Samma budget som i AI-ekonomi · USD").font(.caption).foregroundStyle(StudioTheme.muted)
                 }
                 Spacer()
-                TextField("200", value: $monthlyBudget, format: .number.precision(.fractionLength(0...2)))
+                TextField("25", value: $monthlyBudgetUSD, format: .number.precision(.fractionLength(0...2)))
                     .focused($focusedField, equals: .budget)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
@@ -216,8 +216,8 @@ struct AssistantView: View {
                     .padding(9)
                     .background(StudioTheme.elevated, in: RoundedRectangle(cornerRadius: 9))
                     .foregroundStyle(StudioTheme.text)
-                    .accessibilityLabel("Månatligt AI-budgetmål i kronor")
-                Text("kr").font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
+                    .accessibilityLabel("Gemensam månadsbudget i amerikanska dollar")
+                Text("USD").font(.caption.weight(.semibold)).foregroundStyle(StudioTheme.secondaryText)
             }
         }.padding(15).frame(maxWidth: .infinity, alignment: .leading)
             .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 15))
