@@ -1134,8 +1134,11 @@ struct AssistantView: View {
                 item.projectRepository,
                 item.analysisText ?? "",
                 item.workflowFailureDetails ?? "",
+                item.analysisRecoveryDetails ?? "",
                 item.patchFailureDetails ?? "",
-                item.patchPreview ?? ""
+                item.patchPreview ?? "",
+                item.workflowURL ?? "",
+                item.patchPullRequestURL ?? ""
             ]
             let matchesSearch = query.isEmpty
                 || searchableText.contains { $0.localizedCaseInsensitiveContains(query) }
