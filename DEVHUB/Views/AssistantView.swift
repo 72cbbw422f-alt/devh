@@ -866,6 +866,8 @@ struct AssistantView: View {
             var failedCount = 0
             var recoveredCount = 0
             var errorCount = 0
+            var notFoundCount = 0
+            var recoveryNotes: [String] = []
             for item in pendingItems {
                 do {
                     var resolvedRunID = item.workflowRunID
@@ -875,7 +877,10 @@ struct AssistantView: View {
                             startedAt: item.createdAt,
                             token: token
                         )
-                        guard let recoveredRun else { continue }
+                        guard let recoveredRun else {
+                            notFoundCount += 1
+                            continue
+                        }
                         resolvedRunID = recoveredRun.id
                         await MainActor.run {
                             item.workflowRunID = recoveredRun.id
@@ -934,11 +939,20 @@ struct AssistantView: View {
                     }
                 } catch {
                     errorCount += 1
+                    recoveryNotes.append("\(item.title): \(error.localizedDescription)")
                 }
             }
             await MainActor.run {
                 isRefreshingQueue = false
-                statusMessage = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade, \(errorCount) kunde inte kontrolleras."
+                var summary = "Arbetskön uppdaterad: \(completedCount) nya klara, \(recoveredCount) analyser återhämtade, \(failedCount) misslyckade."
+                if notFoundCount > 0 {
+                    summary += " \(notFoundCount) uppdrag har ännu inte hittats hos GitHub och kontrolleras igen."
+                }
+                if errorCount > 0 {
+                    summary += " \(errorCount) kontroller misslyckades."
+                    summary += " " + recoveryNotes.prefix(2).joined(separator: " · ")
+                }
+                statusMessage = summary
             }
         }
     }
