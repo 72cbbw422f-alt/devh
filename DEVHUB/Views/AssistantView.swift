@@ -445,6 +445,7 @@ struct AssistantView: View {
             let recordedCostUSD = recordedUsageItems.reduce(0.0) { $0 + $1.costUSD }
             let recordedInputTokens = recordedUsageItems.reduce(0) { $0 + $1.inputTokens }
             let recordedOutputTokens = recordedUsageItems.reduce(0) { $0 + $1.outputTokens }
+            let recordedCachedInputTokens = recordedUsageItems.reduce(0) { $0 + $1.cachedInputTokens }
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     Label("Uppskattad AI-kostnad", systemImage: "chart.bar.xaxis")
@@ -455,7 +456,7 @@ struct AssistantView: View {
                         .font(.caption.monospacedDigit().weight(.semibold))
                         .foregroundStyle(StudioTheme.accentCyan)
                 }
-                Text("\(recordedUsageItems.count) uppdrag med kostnadsdata · \(recordedInputTokens.formatted()) in · \(recordedOutputTokens.formatted()) ut")
+                Text("\(recordedUsageItems.count) uppdrag med kostnadsdata · \(recordedInputTokens.formatted()) in · \(recordedCachedInputTokens.formatted()) cachade · \(recordedOutputTokens.formatted()) ut")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(StudioTheme.secondaryText)
                 Text("Uppskattning från tokenförbrukning och GPT-6.2 Sols standardpriser. Faktisk debitering och eventuella justeringar visas i AI-ekonomi.")
@@ -477,6 +478,7 @@ struct AssistantView: View {
                         let projectCost = projectItems.reduce(0.0) { $0 + $1.costUSD }
                         let projectInput = projectItems.reduce(0) { $0 + $1.inputTokens }
                         let projectOutput = projectItems.reduce(0) { $0 + $1.outputTokens }
+                        let projectCachedInput = projectItems.reduce(0) { $0 + $1.cachedInputTokens }
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
                                 Text(repository.replacingOccurrences(of: "72cbbw422f-alt/", with: ""))
@@ -487,7 +489,7 @@ struct AssistantView: View {
                                     .font(.caption.monospacedDigit().weight(.semibold))
                                     .foregroundStyle(StudioTheme.accentCyan)
                             }
-                            Text("\(projectItems.count) uppdrag · \(projectInput.formatted()) in · \(projectOutput.formatted()) ut")
+                            Text("\(projectItems.count) uppdrag · \(projectInput.formatted()) in · \(projectCachedInput.formatted()) cachade · \(projectOutput.formatted()) ut")
                                 .font(.caption2.monospacedDigit())
                                 .foregroundStyle(StudioTheme.secondaryText)
                         }
@@ -576,7 +578,7 @@ struct AssistantView: View {
                             .font(.caption2)
                             .foregroundStyle(StudioTheme.muted)
                             if item.inputTokens > 0 || item.outputTokens > 0 {
-                                Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · uppsk. $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
+                                Text("\(item.inputTokens.formatted()) in · \(item.cachedInputTokens.formatted()) cachade · \(item.outputTokens.formatted()) ut · uppsk. $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(StudioTheme.accentCyan)
                             }
@@ -964,6 +966,7 @@ struct AssistantView: View {
         guard let data = json.data(using: .utf8),
               let usage = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         item.inputTokens = usage["input_tokens"] as? Int ?? item.inputTokens
+        item.cachedInputTokens = usage["cached_input_tokens"] as? Int ?? item.cachedInputTokens
         item.outputTokens = usage["output_tokens"] as? Int ?? item.outputTokens
         item.costUSD = usage["cost_usd"] as? Double ?? item.costUSD
     }
