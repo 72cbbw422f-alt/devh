@@ -1250,25 +1250,36 @@ struct AssistantView: View {
             statusMessage = "Kodförslaget saknar en giltig diff eller grundversion."; return
         }
         guard item.patchStatusRawValue != "dispatching" && item.patchStatusRawValue != "dispatched" else { return }
+        let previousPatchStatus = item.patchStatusRawValue
         item.patchStatusRawValue = "dispatching"
+        item.patchDispatchRequestID = UUID().uuidString
         item.patchWorkflowRunID = nil
         item.patchWorkflowURL = nil
         item.patchPullRequestURL = nil
         let startedAt = Date()
         item.patchDispatchedAt = startedAt
         item.patchFailureDetails = nil
+        do {
+            try modelContext.save()
+        } catch {
+            item.patchStatusRawValue = previousPatchStatus
+            item.patchDispatchRequestID = nil
+            item.patchDispatchedAt = nil
+            statusMessage = "Godkännandet skickades inte eftersom DEVHUB inte kunde spara det: \(error.localizedDescription)"
+            return
+        }
         statusMessage = "Skickar ditt godkända förslag till GitHub…"
         Task {
             var dispatchAccepted = false
             do {
-                try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, token: token)
+                try await GitHubWorkflowClient.dispatchApprovedPatch(repository: item.projectRepository, baseSHA: baseSHA, patch: patch, title: item.title, requestID: item.patchDispatchRequestID ?? UUID().uuidString, token: token)
                 dispatchAccepted = true
                 await MainActor.run {
                     item.patchStatusRawValue = "dispatched"
                     item.updatedAt = .now
                     statusMessage = "GitHub har tagit emot godkännandet. Väntar på att arbetsflödet startar…"
                 }
-                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), token: token) { runID, runURL in
+                let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(startedAt: startedAt, expectedTitle: String(item.title.prefix(120)), requestID: item.patchDispatchRequestID ?? "", token: token) { runID, runURL in
                     await MainActor.run {
                         item.patchWorkflowRunID = runID
                         item.patchWorkflowURL = runURL?.absoluteString
@@ -1383,6 +1394,7 @@ struct AssistantView: View {
                 let result = try await GitHubWorkflowClient.waitForApprovedPatchRun(
                     startedAt: startedAt,
                     expectedTitle: String(item.title.prefix(120)),
+                    requestID: item.patchDispatchRequestID ?? "",
                     token: token
                 ) { runID, runURL in
                     await MainActor.run {
@@ -1824,6 +1836,7 @@ private enum GitHubWorkflowClient {
     static func waitForApprovedPatchRun(
         startedAt: Date,
         expectedTitle: String,
+        requestID: String,
         token: String,
         onRunFound: @escaping (Int, URL?) async -> Void
     ) async throws -> RunResult {
@@ -1841,7 +1854,7 @@ private enum GitHubWorkflowClient {
             if matchedRun == nil {
                 matchedRun = runs.first(where: {
                     $0.event == "workflow_dispatch" &&
-                    $0.display_title == expectedTitle &&
+                    $0.display_title == "\(requestID) · \(expectedTitle)" &&
                     (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-10)
                 })
                 if let run = matchedRun {
@@ -1952,7 +1965,7 @@ private enum GitHubWorkflowClient {
         throw lastError
     }
 
-    static func dispatchApprovedPatch(repository: String, baseSHA: String, patch: String, title: String, token: String) async throws {
+    static func dispatchApprovedPatch(repository: String, baseSHA: String, patch: String, title: String, requestID: String, token: String) async throws {
         let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/apply-byte-patch.yml/dispatches")!
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -1960,7 +1973,7 @@ private enum GitHubWorkflowClient {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["ref": "main", "inputs": ["project_repository": repository, "base_sha": baseSHA, "patch": patch, "task_title": String(title.prefix(120))]])
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["ref": "main", "inputs": ["project_repository": repository, "base_sha": baseSHA, "patch": patch, "task_title": String(title.prefix(120)), "request_id": requestID]])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WorkflowError.invalidResponse }
         guard (200...299).contains(http.statusCode) else {
@@ -1978,7 +1991,7 @@ private enum GitHubWorkflowClient {
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "ref": "fix/project-history-notifications-navigation",
+            "ref": "main",
             "inputs": ["project_repository": repository, "task": task, "request_id": requestID, "work_mode": workMode, "previous_response_id": previousResponseID ?? ""]
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
