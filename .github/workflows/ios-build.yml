@@ -1,6 +1,13 @@
 name: DEVHUB iOS Build
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'DEVHUB/**'
+      - 'project.yml'
+      - '.github/workflows/ios-build.yml'
+      - '.github/workflows/ai-assistant.yml'
   push:
     branches: [main]
     paths:
