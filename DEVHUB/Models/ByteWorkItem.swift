@@ -5,7 +5,7 @@ import SwiftData
 final class ByteWorkItem {
     @Attribute(.unique) var id: String
     var projectRepository: String
-    var dispatchRequestID: String
+    var dispatchRequestID: String = ""
     var title: String
     var statusRawValue: String
     var createdAt: Date
