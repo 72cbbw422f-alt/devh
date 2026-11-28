@@ -447,7 +447,7 @@ struct AssistantView: View {
             let recordedOutputTokens = recordedUsageItems.reduce(0) { $0 + $1.outputTokens }
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
-                    Label("Registrerad AI-användning", systemImage: "chart.bar.xaxis")
+                    Label("Uppskattad AI-kostnad", systemImage: "chart.bar.xaxis")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.text)
                     Spacer()
@@ -458,7 +458,7 @@ struct AssistantView: View {
                 Text("\(recordedUsageItems.count) uppdrag med kostnadsdata · \(recordedInputTokens.formatted()) in · \(recordedOutputTokens.formatted()) ut")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(StudioTheme.secondaryText)
-                Text("Summering av sparad användningsdata i arbetskön. Beloppet visas i USD och är ingen faktura eller kostnadsspärr.")
+                Text("Uppskattning från tokenförbrukning och GPT-6.2 Sols standardpriser. Faktisk debitering och eventuella justeringar visas i AI-ekonomi.")
                     .font(.caption2)
                     .foregroundStyle(StudioTheme.muted)
             }
@@ -494,7 +494,7 @@ struct AssistantView: View {
                         .padding(.vertical, 5)
                     }
                 } label: {
-                    Label("Kostnad per projekt", systemImage: "square.grid.2x2")
+                    Label("Uppskattad kostnad per projekt", systemImage: "square.grid.2x2")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.text)
                 }
@@ -576,7 +576,7 @@ struct AssistantView: View {
                             .font(.caption2)
                             .foregroundStyle(StudioTheme.muted)
                             if item.inputTokens > 0 || item.outputTokens > 0 {
-                                Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
+                                Text("\(item.inputTokens.formatted()) in · \(item.outputTokens.formatted()) ut · uppsk. $\(item.costUSD, format: .number.precision(.fractionLength(5)))")
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(StudioTheme.accentCyan)
                             }
