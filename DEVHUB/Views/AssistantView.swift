@@ -856,10 +856,9 @@ struct AssistantView: View {
             return
         }
         let pendingItems = byteWorkItems.filter {
-            guard let runID = $0.workflowRunID else { return false }
-            return $0.statusRawValue == "running" ||
-                ($0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
-                ($0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
+            $0.statusRawValue == "running" ||
+                ($0.workflowRunID != nil && $0.statusRawValue == "completed" && !queueHasAnalysis($0)) ||
+                ($0.workflowRunID != nil && $0.statusRawValue == "failed" && !queueHasWorkflowFailureDetails($0))
         }
         guard !pendingItems.isEmpty else { return }
         isRefreshingQueue = true
@@ -869,8 +868,23 @@ struct AssistantView: View {
             var recoveredCount = 0
             var errorCount = 0
             for item in pendingItems {
-                guard let runID = item.workflowRunID else { continue }
                 do {
+                    var resolvedRunID = item.workflowRunID
+                    if resolvedRunID == nil {
+                        let recoveredRun = try await GitHubWorkflowClient.findRun(
+                            task: item.title,
+                            startedAt: item.createdAt,
+                            token: token
+                        )
+                        guard let recoveredRun else { continue }
+                        resolvedRunID = recoveredRun.id
+                        await MainActor.run {
+                            item.workflowRunID = recoveredRun.id
+                            item.workflowURL = recoveredRun.url?.absoluteString
+                            item.updatedAt = .now
+                        }
+                    }
+                    guard let runID = resolvedRunID else { continue }
                     let status = try await GitHubWorkflowClient.fetchRunStatus(runID: runID, token: token)
                     var shouldFetchAnalysis = false
                     await MainActor.run {
@@ -1466,8 +1480,10 @@ struct AssistantView: View {
         runStatus = "Skickar uppdraget till GitHub…"
         let startedAt = Date()
         Task {
+            var dispatchAccepted = false
             do {
                 try await GitHubWorkflowClient.dispatch(repository: selectedRepository, task: prompt, workMode: submissionMode, previousResponseID: previousResponseID, token: token)
+                dispatchAccepted = true
                 await MainActor.run {
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
                         item.statusRawValue = "running"
@@ -1548,16 +1564,23 @@ struct AssistantView: View {
                 await MainActor.run {
                     isSending = false
                     if let item = byteWorkItems.first(where: { $0.id == queueItemID }) {
-                        item.statusRawValue = "failed"
+                        // Once GitHub accepts the dispatch, a polling or network error
+                        // must not turn a possibly running workflow into a false failure.
+                        item.statusRawValue = dispatchAccepted ? "running" : "failed"
                         item.updatedAt = .now
                     }
-                    statusMessage = error.localizedDescription
-                    runStatus = "Kunde inte bekräfta att AI-körningen blev klar."
-                    modelContext.insert(DEVHUBNotification(
-                        title: "Byte kunde inte slutföra uppdraget",
-                        message: error.localizedDescription,
-                        category: "issue"
-                    ))
+                    if dispatchAccepted {
+                        statusMessage = "GitHub tog emot uppdraget, men DEVHUB kunde inte bekräfta körningen ännu. Uppdraget ligger kvar som pågående och kontrolleras igen automatiskt. (error.localizedDescription)"
+                        runStatus = "Statusen är osäker – uppdraget har inte markerats som misslyckat."
+                    } else {
+                        statusMessage = error.localizedDescription
+                        runStatus = "Kunde inte skicka AI-uppdraget till GitHub."
+                        modelContext.insert(DEVHUBNotification(
+                            title: "Byte kunde inte skicka uppdraget",
+                            message: error.localizedDescription,
+                            category: "issue"
+                        ))
+                    }
                 }
             }
         }
@@ -1660,6 +1683,30 @@ private enum GitHubWorkflowClient {
         return failures.isEmpty
             ? "GitHub markerade körningen som misslyckad men rapporterade inget specifikt felsteg. Öppna körningen för fullständiga loggar."
             : failures.joined(separator: "\n")
+    }
+
+    static func findRun(task: String, startedAt: Date, token: String) async throws -> RunResult? {
+        let endpoint = URL(string: "https://api.github.com/repos/72cbbw422f-alt/devh/actions/workflows/ai-assistant.yml/runs?per_page=20")!
+        var request = URLRequest(url: endpoint)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw WorkflowError.statusCheck
+        }
+        let runs = try JSONDecoder().decode(RunsResponse.self, from: data).workflow_runs
+        let formatter = ISO8601DateFormatter()
+        guard let run = runs.first(where: {
+            $0.event == "workflow_dispatch" &&
+            $0.display_title == task &&
+            (formatter.date(from: $0.created_at) ?? .distantPast) >= startedAt.addingTimeInterval(-30)
+        }) else { return nil }
+        return RunResult(
+            id: run.id,
+            message: "Återfann GitHub-körningen.",
+            url: URL(string: run.html_url)
+        )
     }
 
     static func fetchRunStatus(runID: Int, token: String) async throws -> RunStatus {
